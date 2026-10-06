@@ -338,9 +338,9 @@
                     <div class="w-12 h-12 rounded-full bg-white shadow-sm text-emerald-600 flex items-center justify-center shrink-0 animate-float">
                         <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
                     </div>
-                    <div>
+                    <div class="flex-1">
                         <h4 class="font-bold text-base mb-1.5 text-gray-900">AI Coaching Tip</h4>
-                        <p class="text-gray-700 text-sm leading-relaxed font-medium">3 of your clients are due for program updates. Consider progressive overload adjustments for John and Sarah.</p>
+                        <p class="text-gray-700 text-sm leading-relaxed font-medium" id="ai-coach-tip-text"></p>
                     </div>
                 </div>
             </div>
@@ -1120,6 +1120,11 @@
                 setTimeout(() => renderEarningsChart(), 100);
                 window.earningsChartRendered = true;
             }
+
+            // Trigger AI typing animation when opening coach dashboard
+            if(screenId === 'coach-dashboard') {
+                setTimeout(typeCoachTip, 500);
+            }
         }
     }
     
@@ -1193,7 +1198,54 @@
             }
         });
     }
+
+    // AI Typing Animation for Coach Tip
+    function typeCoachTip() {
+        const element = document.getElementById('ai-coach-tip-text');
+        if (!element) return;
+
+        const text = "3 of your clients are due for program updates. Consider progressive overload adjustments for John and Sarah.";
+        let index = 0;
+
+        // Clear existing content
+        element.innerHTML = '';
+
+        function type() {
+            if (index < text.length) {
+                element.textContent = text.substring(0, index + 1);
+                index++;
+                // Random typing speed between 30-60ms for natural feel
+                const typingSpeed = Math.random() * 30 + 30;
+                setTimeout(type, typingSpeed);
+            } else {
+                // Add blinking cursor when done
+                element.innerHTML = text + '<span class="ai-cursor-coach">|</span>';
+            }
+        }
+
+        // Start typing after a short delay
+        setTimeout(type, 500);
+    }
+
+    // Initialize typing animation on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(typeCoachTip, 1000);
+    });
 </script>
+
+<style>
+    /* AI Cursor Animation for Coach */
+    .ai-cursor-coach {
+        animation: blink 1s infinite;
+        color: #10B981;
+        font-weight: bold;
+    }
+
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+    }
+</style>
 
 </body>
 </html>
