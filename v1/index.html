@@ -1633,34 +1633,48 @@
     }
 
     // AI Typing Animation
+    let aiTypingTimeout = null;
+    let aiIsTyping = false;
+
     function typeAIInsight() {
         const element = document.getElementById('ai-insight-text');
         if (!element) return;
+
+        // Clear any existing timeout and reset state
+        if (aiTypingTimeout) {
+            clearTimeout(aiTypingTimeout);
+            aiTypingTimeout = null;
+        }
+        aiIsTyping = false;
 
         const text = "You've completed 4 workouts this week. Excellent consistency! Consider adding one active recovery session tomorrow.";
         let index = 0;
 
         // Clear existing content
         element.innerHTML = '';
-
-        // Add cursor styling
         element.style.position = 'relative';
 
+        aiIsTyping = true;
+
         function type() {
+            if (!aiIsTyping) return; // Stop if animation was cancelled
+
             if (index < text.length) {
                 element.textContent = text.substring(0, index + 1);
                 index++;
                 // Random typing speed between 30-60ms for natural feel
                 const typingSpeed = Math.random() * 30 + 30;
-                setTimeout(type, typingSpeed);
+                aiTypingTimeout = setTimeout(type, typingSpeed);
             } else {
                 // Add blinking cursor when done
                 element.innerHTML = text + '<span class="ai-cursor">|</span>';
+                aiIsTyping = false;
+                aiTypingTimeout = null;
             }
         }
 
         // Start typing after a short delay
-        setTimeout(type, 500);
+        aiTypingTimeout = setTimeout(type, 500);
     }
 
     // Initialize typing animation on page load

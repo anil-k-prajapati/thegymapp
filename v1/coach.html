@@ -1200,9 +1200,19 @@
     }
 
     // AI Typing Animation for Coach Tip
+    let coachTypingTimeout = null;
+    let coachIsTyping = false;
+
     function typeCoachTip() {
         const element = document.getElementById('ai-coach-tip-text');
         if (!element) return;
+
+        // Clear any existing timeout and reset state
+        if (coachTypingTimeout) {
+            clearTimeout(coachTypingTimeout);
+            coachTypingTimeout = null;
+        }
+        coachIsTyping = false;
 
         const text = "3 of your clients are due for program updates. Consider progressive overload adjustments for John and Sarah.";
         let index = 0;
@@ -1210,21 +1220,27 @@
         // Clear existing content
         element.innerHTML = '';
 
+        coachIsTyping = true;
+
         function type() {
+            if (!coachIsTyping) return; // Stop if animation was cancelled
+
             if (index < text.length) {
                 element.textContent = text.substring(0, index + 1);
                 index++;
                 // Random typing speed between 30-60ms for natural feel
                 const typingSpeed = Math.random() * 30 + 30;
-                setTimeout(type, typingSpeed);
+                coachTypingTimeout = setTimeout(type, typingSpeed);
             } else {
                 // Add blinking cursor when done
                 element.innerHTML = text + '<span class="ai-cursor-coach">|</span>';
+                coachIsTyping = false;
+                coachTypingTimeout = null;
             }
         }
 
         // Start typing after a short delay
-        setTimeout(type, 500);
+        coachTypingTimeout = setTimeout(type, 500);
     }
 
     // Initialize typing animation on page load
