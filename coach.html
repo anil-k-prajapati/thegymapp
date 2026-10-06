@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>FitHub - Coach Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { primary: '#3B82F6', surface: '#F9FAFB', card: '#FFFFFF', textmain: '#111827', textsub: '#6B7280' },
+                    boxShadow: { 'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.05)', 'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)' }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Mobile-first, responsive base */
+        body { font-family: 'Inter', sans-serif; background-color: #E5E7EB; color: #111827; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; overflow: hidden; -webkit-font-smoothing: antialiased; }
+        .app-container { width: 100%; height: 100dvh; max-width: 480px; background: #F9FAFB; position: relative; overflow: hidden; box-shadow: 0 0 40px rgba(0,0,0,0.1); }
+        
+        /* Smooth Screen Transitions */
+        .screen { position: absolute; inset: 0; background: #F9FAFB; display: none; flex-direction: column; opacity: 0; transform: translateY(20px) scale(0.98); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 10; overflow-x: hidden; height: 100dvh; }
+        .screen.active { display: flex; opacity: 1; transform: translateY(0) scale(1); z-index: 20; }
+        .screen.fade-out { opacity: 0; transform: translateY(-10px) scale(0.98); }
+        
+        .scroll-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 120px; scroll-behavior: smooth; }
+        .scroll-content::-webkit-scrollbar { display: none; }
+        
+        /* Bottom navigation bar with glassmorphism */
+        .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 85px; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid rgba(229, 231, 235, 0.5); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 10px; z-index: 50; padding-bottom: env(safe-area-inset-bottom, 20px); box-shadow: 0 -4px 24px rgba(0,0,0,0.03); }
+        .tab-item { display: flex; flex-direction: column; align-items: center; color: #9CA3AF; font-size: 11px; font-weight: 600; gap: 6px; cursor: pointer; transition: all 0.3s ease; flex: 1; transform: translateY(0); }
+        .tab-item:hover { color: #6B7280; transform: translateY(-2px); }
+        .tab-item.active { color: #10B981; transform: translateY(-3px); }
+        .tab-icon { font-size: 20px; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .tab-item.active .tab-icon { transform: scale(1.2); }
+        
+        /* Headers */
+        .top-header { padding: 24px 24px 16px; background: transparent; display: flex; align-items: center; justify-content: space-between; z-index: 40; position: sticky; top: 0; }
+        .top-header.glass { background: rgba(249, 250, 251, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(229, 231, 235, 0.5); }
+        .top-header h1 { font-size: 18px; font-weight: 700; position: absolute; left: 50%; transform: translateX(-50%); margin: 0; }
+        .back-btn { width: 40px; height: 40px; background: #FFFFFF; border: 1px solid #F3F4F6; border-radius: 12px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #4B5563; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .back-btn:hover { background: #F9FAFB; transform: scale(1.05); }
+        .back-btn:active { transform: scale(0.95); }
+        
+        /* Dynamic Cards */
+        .glass-card { background: #FFFFFF; border-radius: 20px; padding: 20px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05); border: 1px solid rgba(229, 231, 235, 0.5); margin-bottom: 16px; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .glass-card.interactive:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); border-color: rgba(16, 185, 129, 0.3); }
+        .glass-card.interactive:active { transform: translateY(0) scale(0.98); }
+        
+        /* Enhanced Animations */
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.85); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes borderGlow {
+            0%, 100% { border-color: rgba(16, 185, 129, 0.2); }
+            50% { border-color: rgba(16, 185, 129, 0.5); }
+        }
+
+        .animate-stagger > * { opacity: 0; animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+        .animate-stagger > *:nth-child(2) { animation-delay: 0.1s; }
+        .animate-stagger > *:nth-child(3) { animation-delay: 0.15s; }
+        .animate-stagger > *:nth-child(4) { animation-delay: 0.2s; }
+        .animate-stagger > *:nth-child(5) { animation-delay: 0.25s; }
+        .animate-stagger > *:nth-child(6) { animation-delay: 0.3s; }
+        .animate-stagger > *:nth-child(7) { animation-delay: 0.35s; }
+        .animate-stagger > *:nth-child(8) { animation-delay: 0.4s; }
+
+        .animate-scale-in { animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-slide-right { animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+        .animate-border-glow { animation: borderGlow 2s ease-in-out infinite; }
+        .animate-count-up { animation: countUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        .btn-primary { background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 16px; border-radius: 16px; font-weight: 700; text-align: center; width: 100%; cursor: pointer; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 8px 20px rgba(5,150,105,0.25); }
+        .btn-primary:hover { box-shadow: 0 12px 28px rgba(5,150,105,0.35); transform: translateY(-2px); }
+        .btn-primary:active { transform: translateY(2px) scale(0.97); box-shadow: 0 4px 12px rgba(5,150,105,0.15); }
+        
+        .bg-splash { background: linear-gradient(rgba(17,24,39,0.2), rgba(17,24,39,0.95)), url('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=1000&auto=format&fit=crop') center/cover; }
+        
+        .circular-progress { width: 68px; height: 68px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 15px; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: relative; }
+        .circular-progress::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: white; z-index: 1; }
+        .circular-progress span { position: relative; z-index: 2; }
+        .cp-green { background: conic-gradient(#10B981 75%, #ECFDF5 0); color: #10B981; }
+        .cp-orange { background: conic-gradient(#F59E0B 66%, #FFFBEB 0); color: #F59E0B; }
+        .cp-blue { background: conic-gradient(#3B82F6 95%, #EFF6FF 0); color: #3B82F6; }
+        .cp-purple { background: conic-gradient(#8B5CF6 32%, #F5F3FF 0); color: #8B5CF6; }
+
+        .page-tab { flex: 1; text-align: center; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: 600; color: #6B7280; cursor: pointer; transition: all 0.3s; }
+        .page-tab.active { background: #FFFFFF; color: #10B981; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
+        .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 16px; margin-bottom: 4px; font-size: 15px; line-height: 1.5; }
+        .chat-user { background: #10B981; color: white; border-bottom-right-radius: 4px; align-self: flex-end; }
+        .chat-coach { background: #FFFFFF; color: #111827; border-bottom-left-radius: 4px; align-self: flex-start; border: 1px solid #E5E7EB; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+
+        canvas { max-width: 100%; }
+        
+        .input-group { background: #FFFFFF; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; border: 1px solid #E5E7EB; display: flex; align-items: center; gap: 12px; transition: border-color 0.2s; }
+        .input-group:focus-within { border-color: #10B981; box-shadow: 0 0 0 3px rgba(16,185,129,0.1); }
+        .input-group input { border: none; outline: none; width: 100%; font-size: 15px; background: transparent; color: #1F2937; }
+        
+        .btn-social { background: #FFFFFF; color: #374151; padding: 14px; border-radius: 12px; font-weight: 600; text-align: center; width: 100%; cursor: pointer; border: 1px solid #E5E7EB; display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 12px; transition: background 0.2s; }
+        .btn-social:hover { background: #F9FAFB; }
+
+        .stat-card { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; }
+        .stat-card:hover { transform: translateY(-4px) scale(1.02); }
+        .stat-card:active { transform: scale(0.97); }
+
+        /* Ripple effect */
+        .ripple { position: relative; overflow: hidden; }
+        .ripple::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(255,255,255,0.3) 0%, transparent 60%); opacity: 0; transition: opacity 0.5s; }
+        .ripple:active::after { opacity: 1; transition: opacity 0s; }
+
+        .padding-bottom-safe { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+
+        /* Status indicator pulse */
+        .status-online { position: relative; }
+        .status-online::after { content: ''; position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; background: #10B981; border-radius: 50%; border: 2px solid white; animation: pulse-glow 2s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- Screen 1: Splash -->
+    <div id="splash" class="screen active bg-splash justify-end pb-12 px-8">
+        <div class="absolute top-12 left-8 flex items-center gap-3 animate-stagger">
+            <div class="w-12 h-12 bg-emerald-600 rounded-2xl flex justify-center items-center text-white font-bold text-2xl shadow-xl shadow-emerald-500/30 animate-float">F</div>
+            <span class="text-white font-bold text-3xl tracking-tight drop-shadow-md">FitHub</span>
+            <span class="text-emerald-400 text-sm font-bold bg-emerald-400/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Coach</span>
+        </div>
+        <div class="mb-12 animate-stagger">
+            <h1 class="text-white text-5xl font-extrabold leading-tight mb-5 tracking-tight drop-shadow-lg">Train.<br>Inspire.<br>Transform.</h1>
+            <p class="text-gray-300 text-lg max-w-[85%] leading-relaxed font-medium">Manage your clients, build workouts, and grow your coaching business</p>
+        </div>
+        <div class="animate-stagger">
+            <div class="bg-emerald-500 text-white font-bold py-5 rounded-2xl text-center mb-8 cursor-pointer hover:bg-emerald-600 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-xl text-lg flex items-center justify-center gap-2 ripple" onclick="navigate('login')">
+                Coach Login <i class="fa-solid fa-arrow-right"></i>
+            </div>
+            <p class="text-center text-white text-base font-medium">Not a coach? <a href="index.html" class="text-emerald-400 font-bold cursor-pointer hover:text-emerald-300 transition-colors">Switch to Member</a></p>
+        </div>
+    </div>
+    
+    <!-- Screen 2: Login -->
+    <div id="login" class="screen">
+        <div class="top-header">
+            <div class="back-btn" onclick="navigate('splash')"><i class="fa-solid fa-arrow-left"></i></div>
+            <div class="w-10"></div>
+        </div>
+        <div class="scroll-content px-6 pt-2 animate-stagger">
+            <div class="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mb-6 animate-scale-in">
+                <i class="fa-solid fa-dumbbell text-emerald-600 text-2xl"></i>
+            </div>
+            <h2 class="text-3xl font-extrabold mb-2 text-gray-900">Coach Login</h2>
+            <p class="text-textsub mb-10 text-base">Access your coaching dashboard</p>
+            
+            <div class="input-group py-3">
+                <i class="fa-regular fa-envelope text-xl text-gray-400"></i>
+                <div class="flex flex-col w-full">
+                    <span class="text-[11px] font-bold text-textsub uppercase tracking-wider">Email address</span>
+                    <input type="email" value="mike.coach@fithub.com" class="font-semibold text-gray-900 mt-0.5">
+                </div>
+            </div>
+            <div class="input-group py-3">
+                <i class="fa-solid fa-lock text-xl text-gray-400"></i>
+                <div class="flex flex-col w-full">
+                    <span class="text-[11px] font-bold text-textsub uppercase tracking-wider">Password</span>
+                    <input type="password" value="••••••••" class="font-semibold text-gray-900 mt-0.5">
+                </div>
+                <i class="fa-regular fa-eye text-gray-400 cursor-pointer hover:text-gray-700"></i>
+            </div>
+            
+            <div class="flex justify-between items-center mb-8 mt-4">
+                <label class="flex items-center gap-2 text-sm text-gray-700 font-bold cursor-pointer">
+                    <input type="checkbox" checked class="w-4 h-4 rounded border-gray-300 accent-emerald-600">
+                    Remember me
+                </label>
+                <span class="text-emerald-600 text-sm font-bold cursor-pointer hover:underline">Forgot password?</span>
+            </div>
+
+            <div class="btn-primary mb-8 text-lg ripple" onclick="navigate('coach-dashboard')">Login to Dashboard</div>
+            
+            <p class="text-center text-textsub text-base mt-8 pb-6">Need a member account? <a href="index.html" class="text-emerald-600 font-bold cursor-pointer hover:underline">Switch here</a></p>
+        </div>
+    </div>
+
+    <!-- Screen 3: Coach Dashboard -->
+    <div id="coach-dashboard" class="screen">
+        <div class="scroll-content">
+            <div class="px-6 pt-12 pb-8 bg-gradient-to-br from-emerald-600 to-teal-700 rounded-b-[40px] shadow-lg relative overflow-hidden z-10">
+                <div class="absolute -right-20 -top-20 w-60 h-60 bg-white/10 rounded-full blur-2xl"></div>
+                <div class="absolute left-10 bottom-0 w-40 h-40 bg-white/5 rounded-full blur-xl"></div>
+                <div class="flex justify-between items-center animate-stagger">
+                    <div>
+                        <p class="text-emerald-200 text-sm font-medium tracking-wide uppercase">Welcome back</p>
+                        <h2 class="text-3xl font-extrabold text-white mt-1 tracking-tight">Mike Tyson</h2>
+                        <p class="text-emerald-200 text-sm font-bold mt-1 flex items-center gap-2">
+                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            Head Coach
+                        </p>
+                    </div>
+                    <div class="relative cursor-pointer hover:scale-105 transition-transform" onclick="navigate('coach-profile')">
+                        <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&h=150&fit=crop" class="w-16 h-16 rounded-full border-4 border-white/30 shadow-lg object-cover">
+                        <div class="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full border-2 border-white text-white text-[10px] font-bold flex items-center justify-center animate-scale-in">3</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-3 mt-8 animate-stagger">
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 text-center stat-card border border-white/10">
+                        <p class="text-3xl font-extrabold text-white animate-count-up">24</p>
+                        <p class="text-emerald-200 text-xs font-bold mt-1 uppercase tracking-wide">Clients</p>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 text-center stat-card border border-white/10">
+                        <p class="text-3xl font-extrabold text-white animate-count-up">8</p>
+                        <p class="text-emerald-200 text-xs font-bold mt-1 uppercase tracking-wide">Today</p>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 text-center stat-card border border-white/10">
+                        <p class="text-3xl font-extrabold text-white animate-count-up">4.9</p>
+                        <p class="text-emerald-200 text-xs font-bold mt-1 uppercase tracking-wide">Rating</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 mt-8 animate-stagger">
+                <div class="flex justify-between items-end mb-5">
+                    <h3 class="font-extrabold text-2xl text-gray-900 tracking-tight">Today's Schedule</h3>
+                    <span class="text-emerald-600 text-sm font-bold cursor-pointer hover:text-emerald-800 transition-colors flex items-center gap-1" onclick="navigate('coach-schedule')">View All <i class="fa-solid fa-arrow-right text-xs"></i></span>
+                </div>
+
+                <div class="glass-card interactive flex p-4 gap-4 items-center cursor-pointer animate-border-glow" onclick="navigate('client-detail')">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                        <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">John Doe</h4>
+                        <p class="text-textsub text-sm font-medium"><i class="fa-regular fa-clock text-emerald-500 mr-1"></i> 9:00 AM - Upper Body</p>
+                        <div class="flex gap-2 mt-2">
+                            <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md">IN PROGRESS</span>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600"><i class="fa-solid fa-play text-sm"></i></div>
+                </div>
+
+                <div class="glass-card interactive flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('client-detail')">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">Sarah Williams</h4>
+                        <p class="text-textsub text-sm font-medium"><i class="fa-regular fa-clock text-emerald-500 mr-1"></i> 10:30 AM - HIIT</p>
+                        <div class="flex gap-2 mt-2">
+                            <span class="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md">UPCOMING</span>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-400"><i class="fa-solid fa-chevron-right"></i></div>
+                </div>
+
+                <div class="glass-card interactive flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('client-detail')">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">David Chen</h4>
+                        <p class="text-textsub text-sm font-medium"><i class="fa-regular fa-clock text-emerald-500 mr-1"></i> 12:00 PM - Legs</p>
+                        <div class="flex gap-2 mt-2">
+                            <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-md">SCHEDULED</span>
+                        </div>
+                    </div>
+                    <div class="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-400"><i class="fa-solid fa-chevron-right"></i></div>
+                </div>
+            </div>
+
+            <div class="px-6 mt-6 animate-stagger">
+                <h3 class="font-extrabold text-2xl mb-5 text-gray-900 tracking-tight">Quick Actions</h3>
+                <div class="grid grid-cols-2 gap-3 mb-8">
+                    <div class="glass-card interactive !mb-0 flex flex-col items-center py-6 gap-3 cursor-pointer" onclick="navigate('workout-builder')">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center text-emerald-600 shadow-sm animate-float">
+                            <i class="fa-solid fa-dumbbell text-xl"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-900">Build Workout</span>
+                    </div>
+                    <div class="glass-card interactive !mb-0 flex flex-col items-center py-6 gap-3 cursor-pointer" onclick="navigate('coach-chat')">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-blue-600 shadow-sm">
+                            <i class="fa-solid fa-comments text-xl"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-900">Messages</span>
+                    </div>
+                    <div class="glass-card interactive !mb-0 flex flex-col items-center py-6 gap-3 cursor-pointer" onclick="navigate('coach-earnings')">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center text-purple-600 shadow-sm">
+                            <i class="fa-solid fa-wallet text-xl"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-900">Earnings</span>
+                    </div>
+                    <div class="glass-card interactive !mb-0 flex flex-col items-center py-6 gap-3 cursor-pointer" onclick="navigate('coach-clients')">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center text-orange-600 shadow-sm">
+                            <i class="fa-solid fa-users text-xl"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-900">All Clients</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 animate-stagger mb-8">
+                <div class="glass-card bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border border-emerald-100 flex gap-4 p-5 hover:shadow-lg transition-shadow duration-300">
+                    <div class="w-12 h-12 rounded-full bg-white shadow-sm text-emerald-600 flex items-center justify-center shrink-0 animate-float">
+                        <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base mb-1.5 text-gray-900">AI Coaching Tip</h4>
+                        <p class="text-gray-700 text-sm leading-relaxed font-medium">3 of your clients are due for program updates. Consider progressive overload adjustments for John and Sarah.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item active" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item" onclick="navigate('coach-clients')"><i class="fa-solid fa-users tab-icon"></i><span>Clients</span></div>
+            <div class="tab-item" onclick="navigate('coach-schedule')"><i class="fa-solid fa-calendar tab-icon"></i><span>Schedule</span></div>
+            <div class="tab-item" onclick="navigate('coach-earnings')"><i class="fa-solid fa-wallet tab-icon"></i><span>Earnings</span></div>
+            <div class="tab-item" onclick="navigate('coach-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen 4: Clients List -->
+    <div id="coach-clients" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>My Clients</h1>
+            <div class="w-10 h-10 bg-emerald-600 rounded-xl flex justify-center items-center cursor-pointer hover:bg-emerald-700 transition shadow-sm text-white"><i class="fa-solid fa-plus"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <!-- Search -->
+            <div class="input-group mb-6">
+                <i class="fa-solid fa-search text-gray-400"></i>
+                <input type="text" placeholder="Search clients...">
+            </div>
+
+            <div class="flex bg-gray-100 rounded-xl p-1 mb-6">
+                <div class="page-tab active">All (24)</div>
+                <div class="page-tab">Active (18)</div>
+                <div class="page-tab">Paused (6)</div>
+            </div>
+
+            <div class="space-y-3">
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('client-detail')">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                        <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">John Doe</h4>
+                        <p class="text-textsub text-sm font-medium">Muscle Building • 12 weeks</p>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <div class="w-24 bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="bg-emerald-500 h-full rounded-full" style="width: 75%"></div></div>
+                            <span class="text-[10px] font-bold text-emerald-600">75%</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-300"></i>
+                </div>
+
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('client-detail')">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                        <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">Sarah Williams</h4>
+                        <p class="text-textsub text-sm font-medium">Weight Loss • 8 weeks</p>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <div class="w-24 bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="bg-emerald-500 h-full rounded-full" style="width: 60%"></div></div>
+                            <span class="text-[10px] font-bold text-emerald-600">60%</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-300"></i>
+                </div>
+
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('client-detail')">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                        <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">David Chen</h4>
+                        <p class="text-textsub text-sm font-medium">Strength • 16 weeks</p>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <div class="w-24 bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="bg-emerald-500 h-full rounded-full" style="width: 40%"></div></div>
+                            <span class="text-[10px] font-bold text-emerald-600">40%</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-300"></i>
+                </div>
+
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer opacity-60">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                        <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-yellow-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">Emma Johnson</h4>
+                        <p class="text-textsub text-sm font-medium">Flexibility • Paused</p>
+                        <span class="bg-yellow-50 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-md mt-1 inline-block">ON HOLD</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-300"></i>
+                </div>
+
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('client-detail')">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                        <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">Alex Rivera</h4>
+                        <p class="text-textsub text-sm font-medium">Endurance • 6 weeks</p>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <div class="w-24 bg-gray-100 rounded-full h-1.5 overflow-hidden"><div class="bg-emerald-500 h-full rounded-full" style="width: 85%"></div></div>
+                            <span class="text-[10px] font-bold text-emerald-600">85%</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-300"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item active" onclick="navigate('coach-clients')"><i class="fa-solid fa-users tab-icon"></i><span>Clients</span></div>
+            <div class="tab-item" onclick="navigate('coach-schedule')"><i class="fa-solid fa-calendar tab-icon"></i><span>Schedule</span></div>
+            <div class="tab-item" onclick="navigate('coach-earnings')"><i class="fa-solid fa-wallet tab-icon"></i><span>Earnings</span></div>
+            <div class="tab-item" onclick="navigate('coach-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen 5: Client Detail -->
+    <div id="client-detail" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('coach-clients')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Client Profile</h1>
+            <div class="w-10 h-10 bg-white border border-gray-200 rounded-xl flex justify-center items-center cursor-pointer hover:bg-gray-50 shadow-sm"><i class="fa-solid fa-ellipsis-vertical text-gray-600"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="flex flex-col items-center mb-8">
+                <div class="relative mb-4">
+                    <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200&h=200&fit=crop" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-xl animate-scale-in">
+                </div>
+                <h2 class="text-2xl font-extrabold text-gray-900 tracking-tight">John Doe</h2>
+                <p class="text-textsub font-medium mt-1">Muscle Building Program</p>
+                <div class="flex gap-3 mt-4">
+                    <div class="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 cursor-pointer hover:bg-emerald-100 transition" onclick="navigate('coach-chat')"><i class="fa-solid fa-comment"></i></div>
+                    <div class="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 cursor-pointer hover:bg-blue-100 transition"><i class="fa-solid fa-phone"></i></div>
+                    <div class="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center text-purple-600 cursor-pointer hover:bg-purple-100 transition"><i class="fa-solid fa-video"></i></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-8">
+                <div class="glass-card !mb-0 text-center p-4 stat-card">
+                    <p class="text-2xl font-extrabold text-gray-900">175</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Weight (lbs)</p>
+                </div>
+                <div class="glass-card !mb-0 text-center p-4 stat-card">
+                    <p class="text-2xl font-extrabold text-emerald-600">16.5%</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Body Fat</p>
+                </div>
+                <div class="glass-card !mb-0 text-center p-4 stat-card">
+                    <p class="text-2xl font-extrabold text-gray-900">9/12</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Week</p>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl mb-4 text-gray-900 tracking-tight">Progress Overview</h3>
+            <div class="glass-card p-5 mb-6 relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-emerald-50 rounded-full blur-2xl opacity-60"></div>
+                <div class="h-44 w-full relative z-10">
+                    <canvas id="clientProgressChart"></canvas>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl mb-4 text-gray-900 tracking-tight">Current Program</h3>
+            <div class="space-y-3 mb-6">
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">M</div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">Push Day</h4>
+                        <p class="text-textsub text-xs font-medium">Chest, Shoulders, Triceps • 5 exercises</p>
+                    </div>
+                    <i class="fa-solid fa-check-circle text-emerald-500"></i>
+                </div>
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">T</div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">Pull Day</h4>
+                        <p class="text-textsub text-xs font-medium">Back, Biceps • 6 exercises</p>
+                    </div>
+                    <i class="fa-solid fa-check-circle text-emerald-500"></i>
+                </div>
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4 animate-border-glow">
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-sm">W</div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-base text-gray-900">Leg Day</h4>
+                        <p class="text-textsub text-xs font-medium">Quads, Hamstrings, Calves • 6 exercises</p>
+                    </div>
+                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md">TODAY</span>
+                </div>
+            </div>
+
+            <div class="btn-primary flex justify-center items-center gap-3 text-base ripple" onclick="navigate('workout-builder')">
+                <i class="fa-solid fa-pen-to-square"></i> Edit Program
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 6: Schedule -->
+    <div id="coach-schedule" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Schedule</h1>
+            <div class="w-10 h-10 bg-emerald-600 rounded-xl flex justify-center items-center cursor-pointer hover:bg-emerald-700 transition shadow-sm text-white"><i class="fa-solid fa-plus"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <!-- Date Scroller -->
+            <div class="flex gap-2 mb-6 overflow-x-auto pb-2" style="scrollbar-width: none;">
+                <div class="flex flex-col items-center min-w-[52px] py-3 px-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-100">
+                    <span class="text-[10px] font-bold text-textsub uppercase">Mon</span>
+                    <span class="text-lg font-extrabold text-gray-900 mt-1">21</span>
+                </div>
+                <div class="flex flex-col items-center min-w-[52px] py-3 px-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-100">
+                    <span class="text-[10px] font-bold text-textsub uppercase">Tue</span>
+                    <span class="text-lg font-extrabold text-gray-900 mt-1">22</span>
+                </div>
+                <div class="flex flex-col items-center min-w-[52px] py-3 px-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-100">
+                    <span class="text-[10px] font-bold text-textsub uppercase">Wed</span>
+                    <span class="text-lg font-extrabold text-gray-900 mt-1">23</span>
+                </div>
+                <div class="flex flex-col items-center min-w-[52px] py-3 px-2 rounded-2xl bg-emerald-600 text-white cursor-pointer shadow-lg shadow-emerald-500/30 animate-scale-in">
+                    <span class="text-[10px] font-bold text-emerald-200 uppercase">Thu</span>
+                    <span class="text-lg font-extrabold mt-1">24</span>
+                    <div class="w-1.5 h-1.5 bg-white rounded-full mt-1"></div>
+                </div>
+                <div class="flex flex-col items-center min-w-[52px] py-3 px-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-100">
+                    <span class="text-[10px] font-bold text-textsub uppercase">Fri</span>
+                    <span class="text-lg font-extrabold text-gray-900 mt-1">25</span>
+                </div>
+                <div class="flex flex-col items-center min-w-[52px] py-3 px-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-100">
+                    <span class="text-[10px] font-bold text-textsub uppercase">Sat</span>
+                    <span class="text-lg font-extrabold text-gray-400 mt-1">26</span>
+                </div>
+                <div class="flex flex-col items-center min-w-[52px] py-3 px-2 rounded-2xl cursor-pointer transition-all hover:bg-gray-100">
+                    <span class="text-[10px] font-bold text-textsub uppercase">Sun</span>
+                    <span class="text-lg font-extrabold text-gray-400 mt-1">27</span>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-lg mb-4 text-gray-900">Thursday, Oct 24 <span class="text-textsub text-sm font-bold ml-2">8 sessions</span></h3>
+
+            <div class="space-y-3">
+                <!-- Time block -->
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-center w-14 shrink-0">
+                        <span class="text-xs font-bold text-textsub">9:00</span>
+                        <span class="text-[10px] font-bold text-textsub">AM</span>
+                    </div>
+                    <div class="flex-1 glass-card interactive !mb-0 p-4 border-l-4 border-emerald-500 cursor-pointer" onclick="navigate('client-detail')">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=80&h=80&fit=crop" class="w-8 h-8 rounded-full object-cover">
+                            <h4 class="font-bold text-sm text-gray-900">John Doe</h4>
+                            <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md ml-auto">DONE</span>
+                        </div>
+                        <p class="text-textsub text-xs font-medium">Upper Body Strength • 45 min</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-center w-14 shrink-0">
+                        <span class="text-xs font-bold text-textsub">10:30</span>
+                        <span class="text-[10px] font-bold text-textsub">AM</span>
+                    </div>
+                    <div class="flex-1 glass-card interactive !mb-0 p-4 border-l-4 border-blue-500 animate-border-glow cursor-pointer" onclick="navigate('client-detail')">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop" class="w-8 h-8 rounded-full object-cover">
+                            <h4 class="font-bold text-sm text-gray-900">Sarah Williams</h4>
+                            <span class="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md ml-auto">NOW</span>
+                        </div>
+                        <p class="text-textsub text-xs font-medium">HIIT Cardio • 30 min</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-center w-14 shrink-0">
+                        <span class="text-xs font-bold text-textsub">12:00</span>
+                        <span class="text-[10px] font-bold text-textsub">PM</span>
+                    </div>
+                    <div class="flex-1 glass-card interactive !mb-0 p-4 border-l-4 border-gray-300 cursor-pointer" onclick="navigate('client-detail')">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop" class="w-8 h-8 rounded-full object-cover">
+                            <h4 class="font-bold text-sm text-gray-900">David Chen</h4>
+                        </div>
+                        <p class="text-textsub text-xs font-medium">Leg Day • 60 min</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-center w-14 shrink-0">
+                        <span class="text-xs font-bold text-textsub">2:00</span>
+                        <span class="text-[10px] font-bold text-textsub">PM</span>
+                    </div>
+                    <div class="flex-1 glass-card interactive !mb-0 p-4 border-l-4 border-gray-300 cursor-pointer" onclick="navigate('client-detail')">
+                        <div class="flex items-center gap-3 mb-2">
+                            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop" class="w-8 h-8 rounded-full object-cover">
+                            <h4 class="font-bold text-sm text-gray-900">Alex Rivera</h4>
+                        </div>
+                        <p class="text-textsub text-xs font-medium">Endurance Training • 45 min</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-center w-14 shrink-0">
+                        <span class="text-xs font-bold text-textsub">4:00</span>
+                        <span class="text-[10px] font-bold text-textsub">PM</span>
+                    </div>
+                    <div class="flex-1 glass-card interactive !mb-0 p-4 border-l-4 border-purple-400 cursor-pointer" onclick="navigate('coach-clients')">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600"><i class="fa-solid fa-users text-xs"></i></div>
+                            <h4 class="font-bold text-sm text-gray-900">Group HIIT Class</h4>
+                            <span class="bg-purple-50 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-md ml-auto">12 / 15</span>
+                        </div>
+                        <p class="text-textsub text-xs font-medium">Group Session • 45 min</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item" onclick="navigate('coach-clients')"><i class="fa-solid fa-users tab-icon"></i><span>Clients</span></div>
+            <div class="tab-item active" onclick="navigate('coach-schedule')"><i class="fa-solid fa-calendar tab-icon"></i><span>Schedule</span></div>
+            <div class="tab-item" onclick="navigate('coach-earnings')"><i class="fa-solid fa-wallet tab-icon"></i><span>Earnings</span></div>
+            <div class="tab-item" onclick="navigate('coach-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen 7: Workout Builder -->
+    <div id="workout-builder" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Workout Builder</h1>
+            <div class="w-10 h-10 bg-emerald-600 rounded-xl flex justify-center items-center cursor-pointer hover:bg-emerald-700 transition shadow-sm text-white"><i class="fa-solid fa-wand-magic-sparkles text-sm"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="glass-card bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 p-5 mb-6">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+                        <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=80&h=80&fit=crop" class="w-8 h-8 rounded-full object-cover">
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-gray-900">John Doe's Plan</h4>
+                        <p class="text-[11px] text-emerald-700 font-bold">Push Day — Week 9 of 12</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-lg mb-4 text-gray-900 flex items-center gap-2">Exercises <span class="text-sm font-bold text-textsub">(5)</span></h3>
+
+            <div class="space-y-3 mb-8">
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow">
+                    <div class="text-gray-300"><i class="fa-solid fa-grip-vertical"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0"><i class="fa-solid fa-dumbbell"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Bench Press</h4>
+                        <p class="text-textsub text-xs font-medium">4 sets × 8 reps • 155 lbs</p>
+                    </div>
+                    <i class="fa-solid fa-pen text-gray-400 text-sm cursor-pointer hover:text-emerald-600 transition"></i>
+                </div>
+
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow">
+                    <div class="text-gray-300"><i class="fa-solid fa-grip-vertical"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0"><i class="fa-solid fa-dumbbell"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Overhead Press</h4>
+                        <p class="text-textsub text-xs font-medium">3 sets × 10 reps • 95 lbs</p>
+                    </div>
+                    <i class="fa-solid fa-pen text-gray-400 text-sm cursor-pointer hover:text-emerald-600 transition"></i>
+                </div>
+
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow">
+                    <div class="text-gray-300"><i class="fa-solid fa-grip-vertical"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0"><i class="fa-solid fa-dumbbell"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Incline Dumbbell Fly</h4>
+                        <p class="text-textsub text-xs font-medium">3 sets × 12 reps • 30 lbs</p>
+                    </div>
+                    <i class="fa-solid fa-pen text-gray-400 text-sm cursor-pointer hover:text-emerald-600 transition"></i>
+                </div>
+
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow">
+                    <div class="text-gray-300"><i class="fa-solid fa-grip-vertical"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 shrink-0"><i class="fa-solid fa-dumbbell"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Tricep Pushdown</h4>
+                        <p class="text-textsub text-xs font-medium">3 sets × 15 reps • 40 lbs</p>
+                    </div>
+                    <i class="fa-solid fa-pen text-gray-400 text-sm cursor-pointer hover:text-emerald-600 transition"></i>
+                </div>
+
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow">
+                    <div class="text-gray-300"><i class="fa-solid fa-grip-vertical"></i></div>
+                    <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-600 shrink-0"><i class="fa-solid fa-dumbbell"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Lateral Raises</h4>
+                        <p class="text-textsub text-xs font-medium">3 sets × 15 reps • 20 lbs</p>
+                    </div>
+                    <i class="fa-solid fa-pen text-gray-400 text-sm cursor-pointer hover:text-emerald-600 transition"></i>
+                </div>
+            </div>
+
+            <div class="glass-card !mb-6 p-4 flex items-center gap-4 cursor-pointer border-dashed border-2 border-gray-300 hover:border-emerald-400 hover:bg-emerald-50/50 transition-all">
+                <div class="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400"><i class="fa-solid fa-plus text-lg"></i></div>
+                <span class="font-bold text-gray-500">Add Exercise</span>
+            </div>
+
+            <div class="flex gap-3">
+                <div class="flex-1 py-4 text-center font-bold text-gray-700 bg-white rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition" onclick="navigate('coach-dashboard')">Save Draft</div>
+                <div class="btn-primary flex-1 py-4 flex items-center justify-center gap-2 ripple" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-paper-plane"></i> Assign</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 8: Coach Chat -->
+    <div id="coach-chat" class="screen bg-white">
+        <div class="top-header glass border-b border-gray-100 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="back-btn shadow-none bg-gray-50 border-transparent" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+                <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150&h=150&fit=crop" class="w-11 h-11 rounded-full object-cover">
+                <div>
+                    <h2 class="font-bold text-base leading-tight text-gray-900">John Doe</h2>
+                    <p class="text-xs font-bold text-emerald-600 mt-0.5">Member <span class="inline-block w-2 h-2 rounded-full bg-green-500 ml-1 shadow-sm"></span></p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-100 cursor-pointer transition"><i class="fa-solid fa-video text-sm"></i></div>
+            </div>
+        </div>
+        
+        <div class="scroll-content p-5 flex flex-col pt-6 pb-24 bg-gray-50/50 animate-stagger">
+            <div class="text-center text-xs font-bold text-gray-400 mb-6 uppercase tracking-wider">Today, 24 Oct</div>
+            
+            <div class="chat-bubble chat-coach shadow-sm">
+                Hey John! Great work this week. How are you feeling after yesterday's heavy leg session? 🦵
+            </div>
+            <span class="text-[10px] font-bold text-gray-400 mb-5 ml-2 mt-1 uppercase tracking-wide">10:15 AM</span>
+            
+            <div class="chat-bubble chat-user shadow-md">
+                Honestly, pretty sore! But it's a good kind of sore. Managed to hit a new PR on squats! 🏋️‍♂️
+            </div>
+            <span class="text-[10px] font-bold text-gray-400 mb-5 mr-2 mt-1 self-end text-right uppercase tracking-wide">10:22 AM <i class="fa-solid fa-check-double text-emerald-500 ml-1"></i></span>
+            
+            <div class="chat-bubble chat-coach shadow-sm">
+                That's incredible! I'll adjust your program with progressive overload for next week. Here's the updated plan:
+            </div>
+
+            <!-- Workout card in chat -->
+            <div class="chat-bubble chat-coach shadow-sm !p-0 overflow-hidden mt-1 !max-w-[85%]">
+                <div class="bg-gradient-to-br from-emerald-50 to-teal-50 p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-dumbbell text-emerald-600"></i>
+                        <span class="font-bold text-sm text-emerald-800">Updated Push Day</span>
+                    </div>
+                    <p class="text-xs text-emerald-700 font-medium">5 exercises • ~50 min • Progressive overload applied</p>
+                    <div class="mt-3 bg-white/80 rounded-lg py-2 px-3 text-center text-emerald-700 font-bold text-xs cursor-pointer hover:bg-white transition">View Workout →</div>
+                </div>
+            </div>
+            <span class="text-[10px] font-bold text-gray-400 mb-5 ml-2 mt-1 uppercase tracking-wide">10:30 AM</span>
+
+            <div class="chat-bubble chat-user shadow-md">
+                Perfect, looks great! I'll start with the updated weights tomorrow 💪
+            </div>
+            <span class="text-[10px] font-bold text-gray-400 mb-5 mr-2 mt-1 self-end text-right uppercase tracking-wide">10:35 AM <i class="fa-solid fa-check-double text-emerald-500 ml-1"></i></span>
+        </div>
+
+        <div class="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 flex gap-3 items-end shadow-[0_-10px_20px_rgba(0,0,0,0.02)] z-50 padding-bottom-safe">
+            <div class="w-11 h-11 rounded-full flex items-center justify-center bg-gray-50 text-gray-500 shrink-0 cursor-pointer hover:bg-gray-100 transition">
+                <i class="fa-solid fa-paperclip text-lg"></i>
+            </div>
+            <div class="flex-1 bg-gray-50 rounded-2xl px-4 py-3 min-h-[44px] flex items-center border border-gray-200 focus-within:border-emerald-500 focus-within:bg-white transition">
+                <textarea rows="1" placeholder="Message John..." class="bg-transparent border-none outline-none w-full text-base resize-none text-gray-900 overflow-hidden font-medium" style="min-height: 24px; max-height: 100px; line-height: 24px;"></textarea>
+            </div>
+            <div class="w-11 h-11 bg-emerald-600 rounded-full flex items-center justify-center text-white shrink-0 shadow-md cursor-pointer hover:bg-emerald-700 transition transform active:scale-95">
+                <i class="fa-solid fa-paper-plane text-sm ml-1"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 9: Earnings -->
+    <div id="coach-earnings" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Earnings</h1>
+            <div class="w-10"></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="glass-card p-6 mb-6 bg-gradient-to-br from-emerald-600 to-teal-700 text-white relative overflow-hidden">
+                <div class="absolute -right-16 -top-16 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
+                <p class="text-emerald-200 text-xs font-bold uppercase tracking-wider mb-1">Total Earnings</p>
+                <h2 class="text-5xl font-black tracking-tighter mb-1 animate-count-up">$4,850</h2>
+                <p class="text-emerald-200 text-sm font-medium">October 2024</p>
+                <div class="flex items-center gap-2 mt-4">
+                    <span class="bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-lg flex items-center gap-1">
+                        <i class="fa-solid fa-arrow-up text-[10px]"></i> +18%
+                    </span>
+                    <span class="text-emerald-200 text-xs font-medium">vs last month</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-8">
+                <div class="glass-card !mb-0 p-5 stat-card">
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3"><i class="fa-solid fa-user-group"></i></div>
+                    <p class="text-2xl font-extrabold text-gray-900 animate-count-up">$3,600</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">1-on-1 Sessions</p>
+                </div>
+                <div class="glass-card !mb-0 p-5 stat-card">
+                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3"><i class="fa-solid fa-users"></i></div>
+                    <p class="text-2xl font-extrabold text-gray-900 animate-count-up">$1,250</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Group Classes</p>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl mb-4 text-gray-900 tracking-tight">Revenue Chart</h3>
+            <div class="glass-card p-5 mb-6 relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-emerald-50 rounded-full blur-2xl opacity-60"></div>
+                <div class="h-48 w-full relative z-10">
+                    <canvas id="earningsChart"></canvas>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl mb-4 text-gray-900 tracking-tight">Recent Transactions</h3>
+            <div class="space-y-3">
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-arrow-down text-sm"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Session — John Doe</h4>
+                        <p class="text-textsub text-xs font-medium">Today, 9:00 AM</p>
+                    </div>
+                    <span class="font-extrabold text-emerald-600">+$75</span>
+                </div>
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-arrow-down text-sm"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Session — Sarah Williams</h4>
+                        <p class="text-textsub text-xs font-medium">Today, 10:30 AM</p>
+                    </div>
+                    <span class="font-extrabold text-emerald-600">+$75</span>
+                </div>
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fa-solid fa-arrow-down text-sm"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Group HIIT Class</h4>
+                        <p class="text-textsub text-xs font-medium">Yesterday, 4:00 PM</p>
+                    </div>
+                    <span class="font-extrabold text-purple-600">+$150</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item" onclick="navigate('coach-clients')"><i class="fa-solid fa-users tab-icon"></i><span>Clients</span></div>
+            <div class="tab-item" onclick="navigate('coach-schedule')"><i class="fa-solid fa-calendar tab-icon"></i><span>Schedule</span></div>
+            <div class="tab-item active" onclick="navigate('coach-earnings')"><i class="fa-solid fa-wallet tab-icon"></i><span>Earnings</span></div>
+            <div class="tab-item" onclick="navigate('coach-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen 10: Coach Profile -->
+    <div id="coach-profile" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>My Profile</h1>
+            <div class="w-10 h-10 bg-white border border-gray-200 rounded-xl flex justify-center items-center cursor-pointer hover:bg-gray-50 shadow-sm"><i class="fa-solid fa-gear text-gray-600"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="flex flex-col items-center mb-8 pt-2">
+                <div class="relative mb-4">
+                    <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=200&h=200&fit=crop" class="w-28 h-28 rounded-full object-cover border-4 border-white shadow-xl animate-scale-in">
+                    <div class="absolute bottom-0 right-0 w-9 h-9 bg-emerald-600 rounded-full border-2 border-white flex items-center justify-center text-white cursor-pointer shadow-md hover:bg-emerald-700 transition">
+                        <i class="fa-solid fa-camera text-sm"></i>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">Mike Tyson</h2>
+                <p class="text-emerald-600 font-bold mt-1">Head Coach</p>
+                <div class="flex items-center gap-1 mt-2">
+                    <i class="fa-solid fa-star text-yellow-400 text-sm"></i>
+                    <i class="fa-solid fa-star text-yellow-400 text-sm"></i>
+                    <i class="fa-solid fa-star text-yellow-400 text-sm"></i>
+                    <i class="fa-solid fa-star text-yellow-400 text-sm"></i>
+                    <i class="fa-solid fa-star-half-stroke text-yellow-400 text-sm"></i>
+                    <span class="font-bold text-sm text-gray-900 ml-1">4.9</span>
+                    <span class="text-textsub text-xs font-medium">(128 reviews)</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-8">
+                <div class="glass-card !mb-0 text-center p-4 stat-card">
+                    <p class="text-2xl font-extrabold text-gray-900 animate-count-up">5</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Yrs Exp</p>
+                </div>
+                <div class="glass-card !mb-0 text-center p-4 stat-card">
+                    <p class="text-2xl font-extrabold text-gray-900 animate-count-up">350+</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Sessions</p>
+                </div>
+                <div class="glass-card !mb-0 text-center p-4 stat-card">
+                    <p class="text-2xl font-extrabold text-gray-900 animate-count-up">24</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Active</p>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl text-gray-900 mb-4 px-2 tracking-tight">Specializations</h3>
+            <div class="flex flex-wrap gap-2 mb-8">
+                <span class="bg-emerald-50 text-emerald-700 text-sm font-bold px-4 py-2 rounded-xl border border-emerald-100">Strength Training</span>
+                <span class="bg-blue-50 text-blue-700 text-sm font-bold px-4 py-2 rounded-xl border border-blue-100">HIIT</span>
+                <span class="bg-purple-50 text-purple-700 text-sm font-bold px-4 py-2 rounded-xl border border-purple-100">Sports Performance</span>
+                <span class="bg-orange-50 text-orange-700 text-sm font-bold px-4 py-2 rounded-xl border border-orange-100">Weight Loss</span>
+                <span class="bg-teal-50 text-teal-700 text-sm font-bold px-4 py-2 rounded-xl border border-teal-100">Flexibility</span>
+            </div>
+
+            <h3 class="font-extrabold text-xl text-gray-900 mb-4 px-2 tracking-tight">Settings</h3>
+            <div class="glass-card p-0 overflow-hidden divide-y divide-gray-100 mb-8 border border-gray-200 shadow-sm">
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition px-5 py-4" onclick="navigate('coach-settings')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-regular fa-user text-base"></i></div>
+                        <span class="font-bold text-base text-gray-900">Personal Information</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition px-5 py-4" onclick="navigate('coach-settings')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-clock text-base"></i></div>
+                        <span class="font-bold text-base text-gray-900">Availability</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition px-5 py-4" onclick="navigate('coach-settings')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center"><i class="fa-regular fa-credit-card text-base"></i></div>
+                        <span class="font-bold text-base text-gray-900">Payment Settings</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition px-5 py-4" onclick="navigate('coach-settings')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fa-solid fa-bell text-base"></i></div>
+                        <span class="font-bold text-base text-gray-900">Notifications</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+            </div>
+            
+            <div class="text-center text-red-500 font-extrabold text-lg py-4 bg-white rounded-2xl cursor-pointer shadow-sm border border-red-100 hover:bg-red-50 transition mb-6 ripple" onclick="navigate('splash')">
+                <i class="fa-solid fa-arrow-right-from-bracket mr-2"></i> Log Out
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item" onclick="navigate('coach-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item" onclick="navigate('coach-clients')"><i class="fa-solid fa-users tab-icon"></i><span>Clients</span></div>
+            <div class="tab-item" onclick="navigate('coach-schedule')"><i class="fa-solid fa-calendar tab-icon"></i><span>Schedule</span></div>
+            <div class="tab-item" onclick="navigate('coach-earnings')"><i class="fa-solid fa-wallet tab-icon"></i><span>Earnings</span></div>
+            <div class="tab-item active" onclick="navigate('coach-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen: Coach Settings -->
+    <div id="coach-settings" class="screen bg-white">
+        <div class="top-header glass border-b border-gray-100 shadow-sm">
+            <div class="back-btn shadow-none bg-gray-50 border-transparent" onclick="navigate('coach-profile')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Settings</h1>
+            <div class="w-10"></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="input-group">
+                <i class="fa-solid fa-user text-gray-400"></i>
+                <div class="flex flex-col w-full">
+                    <span class="text-[11px] font-bold text-textsub uppercase tracking-wider">Full Name</span>
+                    <input type="text" value="Mike Tyson" class="font-semibold text-gray-900 mt-0.5">
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <i class="fa-solid fa-envelope text-gray-400"></i>
+                <div class="flex flex-col w-full">
+                    <span class="text-[11px] font-bold text-textsub uppercase tracking-wider">Email</span>
+                    <input type="email" value="mike.t@fithub.com" class="font-semibold text-gray-900 mt-0.5">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <i class="fa-solid fa-phone text-gray-400"></i>
+                <div class="flex flex-col w-full">
+                    <span class="text-[11px] font-bold text-textsub uppercase tracking-wider">Phone</span>
+                    <input type="tel" value="+1 (555) 123-4567" class="font-semibold text-gray-900 mt-0.5">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between p-4 glass-card mt-4 mb-4">
+                <div>
+                    <h4 class="font-bold text-gray-900 text-sm">Push Notifications</h4>
+                    <p class="text-xs text-textsub mt-1">Get alerts for new messages</p>
+                </div>
+                <div class="w-12 h-6 bg-emerald-600 rounded-full relative cursor-pointer shadow-inner">
+                    <div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5 shadow-sm"></div>
+                </div>
+            </div>
+
+            <div class="btn-primary mt-8 ripple" onclick="navigate('coach-profile')">Save Changes</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function navigate(screenId) {
+        const screens = document.querySelectorAll('.screen');
+        
+        let currentActive = null;
+        screens.forEach(s => {
+            if(s.classList.contains('active')) currentActive = s;
+        });
+
+        if(currentActive && currentActive.id !== screenId) {
+            currentActive.classList.remove('active');
+            currentActive.classList.add('fade-out');
+            setTimeout(() => {
+                currentActive.classList.remove('fade-out');
+            }, 300);
+        }
+
+        const target = document.getElementById(screenId);
+        if(target) {
+            target.classList.add('active');
+            
+            // Re-trigger animations
+            const staggers = target.querySelectorAll('.animate-stagger > *');
+            staggers.forEach(el => {
+                el.style.animation = 'none';
+                el.offsetHeight; /* trigger reflow */
+                el.style.animation = null; 
+            });
+            
+            // Render charts
+            if(screenId === 'client-detail' && !window.clientChartRendered) {
+                setTimeout(() => renderClientChart(), 100);
+                window.clientChartRendered = true;
+            }
+            if(screenId === 'coach-earnings' && !window.earningsChartRendered) {
+                setTimeout(() => renderEarningsChart(), 100);
+                window.earningsChartRendered = true;
+            }
+        }
+    }
+    
+    function renderClientChart() {
+        const ctx = document.getElementById('clientProgressChart');
+        if (!ctx) return;
+        let gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 160);
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8', 'W9'],
+                datasets: [{
+                    label: 'Weight',
+                    data: [185, 183, 182, 180, 181, 179, 178, 176, 175],
+                    borderColor: '#10B981',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#10B981',
+                    pointBorderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false } },
+                    y: { grid: { color: '#F3F4F6', borderDash: [5, 5] }, border: { display: false }, suggestedMin: 170, suggestedMax: 188 }
+                },
+                animation: { duration: 1500, easing: 'easeOutQuart' }
+            }
+        });
+    }
+
+    function renderEarningsChart() {
+        const ctx = document.getElementById('earningsChart');
+        if (!ctx) return;
+        let gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 180);
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+                datasets: [{
+                    label: 'Earnings',
+                    data: [3200, 3800, 4100, 3900, 4100, 4850],
+                    backgroundColor: ['rgba(16,185,129,0.15)', 'rgba(16,185,129,0.2)', 'rgba(16,185,129,0.25)', 'rgba(16,185,129,0.3)', 'rgba(16,185,129,0.4)', '#10B981'],
+                    borderRadius: 12,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false } },
+                    y: { grid: { color: '#F3F4F6', borderDash: [5, 5] }, border: { display: false }, suggestedMin: 0 }
+                },
+                animation: { duration: 1500, easing: 'easeOutQuart' }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>

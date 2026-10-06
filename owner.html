@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>FitHub - Gym Owner Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { primary: '#3B82F6', surface: '#F9FAFB', card: '#FFFFFF', textmain: '#111827', textsub: '#6B7280' },
+                    boxShadow: { 'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.05)', 'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)' }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Mobile-first, responsive base */
+        body { font-family: 'Inter', sans-serif; background-color: #E5E7EB; color: #111827; margin: 0; padding: 0; display: flex; justify-content: center; height: 100dvh; overflow: hidden; -webkit-font-smoothing: antialiased; }
+        .app-container { width: 100%; height: 100dvh; max-width: 480px; background: #F9FAFB; position: relative; overflow: hidden; box-shadow: 0 0 40px rgba(0,0,0,0.1); }
+        
+        /* Smooth Screen Transitions */
+        .screen { position: absolute; inset: 0; background: #F9FAFB; display: none; flex-direction: column; opacity: 0; transform: translateY(20px) scale(0.98); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 10; overflow-x: hidden; height: 100dvh; }
+        .screen.active { display: flex; opacity: 1; transform: translateY(0) scale(1); z-index: 20; }
+        .screen.fade-out { opacity: 0; transform: translateY(-10px) scale(0.98); }
+        
+        .scroll-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 120px; scroll-behavior: smooth; }
+        .scroll-content::-webkit-scrollbar { display: none; }
+        
+        /* Bottom navigation bar with glassmorphism */
+        .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 85px; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid rgba(229, 231, 235, 0.5); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 10px; z-index: 50; padding-bottom: env(safe-area-inset-bottom, 20px); box-shadow: 0 -4px 24px rgba(0,0,0,0.03); }
+        .tab-item { display: flex; flex-direction: column; align-items: center; color: #9CA3AF; font-size: 11px; font-weight: 600; gap: 6px; cursor: pointer; transition: all 0.3s ease; flex: 1; transform: translateY(0); }
+        .tab-item:hover { color: #6B7280; transform: translateY(-2px); }
+        .tab-item.active { color: #7C3AED; transform: translateY(-3px); }
+        .tab-icon { font-size: 20px; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .tab-item.active .tab-icon { transform: scale(1.2); }
+        
+        /* Headers */
+        .top-header { padding: 24px 24px 16px; background: transparent; display: flex; align-items: center; justify-content: space-between; z-index: 40; position: sticky; top: 0; }
+        .top-header.glass { background: rgba(249, 250, 251, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(229, 231, 235, 0.5); }
+        .top-header h1 { font-size: 18px; font-weight: 700; position: absolute; left: 50%; transform: translateX(-50%); margin: 0; }
+        .back-btn { width: 40px; height: 40px; background: #FFFFFF; border: 1px solid #F3F4F6; border-radius: 12px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #4B5563; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .back-btn:hover { background: #F9FAFB; transform: scale(1.05); }
+        .back-btn:active { transform: scale(0.95); }
+        
+        /* Dynamic Cards */
+        .glass-card { background: #FFFFFF; border-radius: 20px; padding: 20px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05); border: 1px solid rgba(229, 231, 235, 0.5); margin-bottom: 16px; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .glass-card.interactive:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); border-color: rgba(124, 58, 237, 0.3); }
+        .glass-card.interactive:active { transform: translateY(0) scale(0.98); }
+        
+        /* Enhanced Animations */
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.85); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.3); }
+            50% { box-shadow: 0 0 0 8px rgba(124, 58, 237, 0); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes borderGlow {
+            0%, 100% { border-color: rgba(124, 58, 237, 0.2); }
+            50% { border-color: rgba(124, 58, 237, 0.5); }
+        }
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        @keyframes tickerSlide {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .animate-stagger > * { opacity: 0; animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+        .animate-stagger > *:nth-child(2) { animation-delay: 0.1s; }
+        .animate-stagger > *:nth-child(3) { animation-delay: 0.15s; }
+        .animate-stagger > *:nth-child(4) { animation-delay: 0.2s; }
+        .animate-stagger > *:nth-child(5) { animation-delay: 0.25s; }
+        .animate-stagger > *:nth-child(6) { animation-delay: 0.3s; }
+        .animate-stagger > *:nth-child(7) { animation-delay: 0.35s; }
+        .animate-stagger > *:nth-child(8) { animation-delay: 0.4s; }
+        .animate-stagger > *:nth-child(9) { animation-delay: 0.45s; }
+
+        .animate-scale-in { animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+        .animate-border-glow { animation: borderGlow 2s ease-in-out infinite; }
+        .animate-count-up { animation: countUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-gradient { background-size: 200% 200%; animation: gradientShift 3s ease infinite; }
+
+        .btn-primary { background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%); color: white; padding: 16px; border-radius: 16px; font-weight: 700; text-align: center; width: 100%; cursor: pointer; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 8px 20px rgba(109,40,217,0.25); }
+        .btn-primary:hover { box-shadow: 0 12px 28px rgba(109,40,217,0.35); transform: translateY(-2px); }
+        .btn-primary:active { transform: translateY(2px) scale(0.97); box-shadow: 0 4px 12px rgba(109,40,217,0.15); }
+        
+        .bg-splash { background: linear-gradient(rgba(17,24,39,0.3), rgba(17,24,39,0.95)), url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1000&auto=format&fit=crop') center/cover; }
+
+        .page-tab { flex: 1; text-align: center; padding: 12px 0; border-radius: 12px; font-size: 14px; font-weight: 600; color: #6B7280; cursor: pointer; transition: all 0.3s; }
+        .page-tab.active { background: #FFFFFF; color: #7C3AED; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
+        canvas { max-width: 100%; }
+        
+        .input-group { background: #FFFFFF; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; border: 1px solid #E5E7EB; display: flex; align-items: center; gap: 12px; transition: border-color 0.2s; }
+        .input-group:focus-within { border-color: #7C3AED; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+        .input-group input { border: none; outline: none; width: 100%; font-size: 15px; background: transparent; color: #1F2937; }
+
+        .stat-card { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; }
+        .stat-card:hover { transform: translateY(-4px) scale(1.02); }
+        .stat-card:active { transform: scale(0.97); }
+
+        .ripple { position: relative; overflow: hidden; }
+        .ripple::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(255,255,255,0.3) 0%, transparent 60%); opacity: 0; transition: opacity 0.5s; }
+        .ripple:active::after { opacity: 1; transition: opacity 0s; }
+
+        .padding-bottom-safe { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+
+        /* Live indicator */
+        .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #10B981; display: inline-block; animation: pulse-glow 1.5s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- Screen 1: Splash -->
+    <div id="splash" class="screen active bg-splash justify-end pb-12 px-8">
+        <div class="absolute top-12 left-8 flex items-center gap-3 animate-stagger">
+            <div class="w-12 h-12 bg-violet-600 rounded-2xl flex justify-center items-center text-white font-bold text-2xl shadow-xl shadow-violet-500/30 animate-float">F</div>
+            <span class="text-white font-bold text-3xl tracking-tight drop-shadow-md">FitHub</span>
+            <span class="text-violet-300 text-sm font-bold bg-violet-400/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Owner</span>
+        </div>
+        <div class="mb-12 animate-stagger">
+            <h1 class="text-white text-5xl font-extrabold leading-tight mb-5 tracking-tight drop-shadow-lg">Manage.<br>Grow.<br>Succeed.</h1>
+            <p class="text-gray-300 text-lg max-w-[85%] leading-relaxed font-medium">Complete gym management platform — revenue, staff, members and analytics</p>
+        </div>
+        <div class="animate-stagger">
+            <div class="bg-violet-600 text-white font-bold py-5 rounded-2xl text-center mb-8 cursor-pointer hover:bg-violet-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-xl text-lg flex items-center justify-center gap-2 ripple" onclick="navigate('login')">
+                Owner Login <i class="fa-solid fa-arrow-right"></i>
+            </div>
+            <p class="text-center text-white text-base font-medium">Not an owner? <a href="index.html" class="text-violet-400 font-bold cursor-pointer hover:text-violet-300 transition-colors">Switch to Member</a></p>
+        </div>
+    </div>
+
+    <!-- Screen 2: Login -->
+    <div id="login" class="screen">
+        <div class="top-header">
+            <div class="back-btn" onclick="navigate('splash')"><i class="fa-solid fa-arrow-left"></i></div>
+            <div class="w-10"></div>
+        </div>
+        <div class="scroll-content px-6 pt-2 animate-stagger">
+            <div class="w-16 h-16 bg-violet-100 rounded-2xl flex items-center justify-center mb-6 animate-scale-in">
+                <i class="fa-solid fa-building text-violet-600 text-2xl"></i>
+            </div>
+            <h2 class="text-3xl font-extrabold mb-2 text-gray-900">Owner Login</h2>
+            <p class="text-textsub mb-10 text-base">Access your gym management dashboard</p>
+            
+            <div class="input-group py-3">
+                <i class="fa-regular fa-envelope text-xl text-gray-400"></i>
+                <div class="flex flex-col w-full">
+                    <span class="text-[11px] font-bold text-textsub uppercase tracking-wider">Email address</span>
+                    <input type="email" value="admin@fithubgym.com" class="font-semibold text-gray-900 mt-0.5">
+                </div>
+            </div>
+            <div class="input-group py-3">
+                <i class="fa-solid fa-lock text-xl text-gray-400"></i>
+                <div class="flex flex-col w-full">
+                    <span class="text-[11px] font-bold text-textsub uppercase tracking-wider">Password</span>
+                    <input type="password" value="••••••••" class="font-semibold text-gray-900 mt-0.5">
+                </div>
+                <i class="fa-regular fa-eye text-gray-400 cursor-pointer hover:text-gray-700"></i>
+            </div>
+            
+            <div class="flex justify-between items-center mb-8 mt-4">
+                <label class="flex items-center gap-2 text-sm text-gray-700 font-bold cursor-pointer">
+                    <input type="checkbox" checked class="w-4 h-4 rounded border-gray-300 accent-violet-600">
+                    Remember me
+                </label>
+                <span class="text-violet-600 text-sm font-bold cursor-pointer hover:underline">Forgot password?</span>
+            </div>
+
+            <div class="btn-primary mb-8 text-lg ripple" onclick="navigate('owner-dashboard')">Login to Dashboard</div>
+            
+            <p class="text-center text-textsub text-base mt-8 pb-6">Need a member account? <a href="index.html" class="text-violet-600 font-bold cursor-pointer hover:underline">Switch here</a></p>
+        </div>
+    </div>
+
+    <!-- Screen 3: Owner Dashboard -->
+    <div id="owner-dashboard" class="screen">
+        <div class="scroll-content">
+            <div class="px-6 pt-12 pb-8 bg-gradient-to-br from-violet-700 via-purple-700 to-indigo-800 rounded-b-[40px] shadow-lg relative overflow-hidden z-10 animate-gradient">
+                <div class="absolute -right-20 -top-20 w-60 h-60 bg-white/10 rounded-full blur-2xl"></div>
+                <div class="absolute left-10 bottom-0 w-40 h-40 bg-white/5 rounded-full blur-xl"></div>
+                <div class="absolute right-10 bottom-10 w-20 h-20 bg-violet-400/20 rounded-full blur-lg"></div>
+                <div class="flex justify-between items-center animate-stagger">
+                    <div>
+                        <p class="text-violet-200 text-sm font-medium tracking-wide uppercase flex items-center gap-2"><span class="live-dot"></span> Live Dashboard</p>
+                        <h2 class="text-3xl font-extrabold text-white mt-1 tracking-tight">FitHub Gym</h2>
+                        <p class="text-violet-200 text-sm font-bold mt-1">Downtown Location</p>
+                    </div>
+                    <div class="relative cursor-pointer hover:scale-105 transition-transform" onclick="navigate('owner-profile')">
+                        <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop" class="w-16 h-16 rounded-full border-4 border-white/30 shadow-lg object-cover">
+                        <div class="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full border-2 border-white text-white text-[10px] font-bold flex items-center justify-center animate-scale-in">5</div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 mt-8 animate-stagger">
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 stat-card border border-white/10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white"><i class="fa-solid fa-dollar-sign text-sm"></i></div>
+                            <span class="text-violet-200 text-[10px] font-bold uppercase tracking-wider">Revenue</span>
+                        </div>
+                        <p class="text-2xl font-extrabold text-white animate-count-up">$52.4K</p>
+                        <div class="flex items-center gap-1 mt-1">
+                            <span class="text-emerald-400 text-xs font-bold"><i class="fa-solid fa-arrow-up text-[10px]"></i> 12%</span>
+                            <span class="text-violet-300 text-[10px]">vs last month</span>
+                        </div>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 stat-card border border-white/10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white"><i class="fa-solid fa-users text-sm"></i></div>
+                            <span class="text-violet-200 text-[10px] font-bold uppercase tracking-wider">Members</span>
+                        </div>
+                        <p class="text-2xl font-extrabold text-white animate-count-up">847</p>
+                        <div class="flex items-center gap-1 mt-1">
+                            <span class="text-emerald-400 text-xs font-bold"><i class="fa-solid fa-arrow-up text-[10px]"></i> 24</span>
+                            <span class="text-violet-300 text-[10px]">new this month</span>
+                        </div>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 stat-card border border-white/10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white"><i class="fa-solid fa-person-walking text-sm"></i></div>
+                            <span class="text-violet-200 text-[10px] font-bold uppercase tracking-wider">Checkins</span>
+                        </div>
+                        <p class="text-2xl font-extrabold text-white animate-count-up">142</p>
+                        <span class="text-violet-300 text-[10px]">today</span>
+                    </div>
+                    <div class="bg-white/15 backdrop-blur-sm rounded-2xl p-4 stat-card border border-white/10">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white"><i class="fa-solid fa-dumbbell text-sm"></i></div>
+                            <span class="text-violet-200 text-[10px] font-bold uppercase tracking-wider">Coaches</span>
+                        </div>
+                        <p class="text-2xl font-extrabold text-white animate-count-up">12</p>
+                        <span class="text-violet-300 text-[10px]">active staff</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 mt-8 animate-stagger">
+                <div class="flex justify-between items-end mb-5">
+                    <h3 class="font-extrabold text-2xl text-gray-900 tracking-tight">Revenue</h3>
+                    <div class="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+                        <span class="text-xs font-bold text-violet-600 bg-white px-3 py-1.5 rounded-md shadow-sm">Monthly</span>
+                        <span class="text-xs font-bold text-gray-500 px-3 py-1.5 cursor-pointer">Weekly</span>
+                    </div>
+                </div>
+                <div class="glass-card p-5 mb-6 relative overflow-hidden">
+                    <div class="absolute -right-10 -top-10 w-40 h-40 bg-violet-50 rounded-full blur-2xl opacity-60"></div>
+                    <div class="h-48 w-full relative z-10">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 animate-stagger">
+                <h3 class="font-extrabold text-2xl mb-5 text-gray-900 tracking-tight">Quick Actions</h3>
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="glass-card interactive !mb-0 flex flex-col items-center py-6 gap-3 cursor-pointer" onclick="navigate('owner-members')">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-50 to-purple-50 flex items-center justify-center text-violet-600 shadow-sm animate-float">
+                            <i class="fa-solid fa-users text-xl"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-900">Members</span>
+                    </div>
+                    <div class="glass-card interactive !mb-0 flex flex-col items-center py-6 gap-3 cursor-pointer" onclick="navigate('owner-staff')">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center text-emerald-600 shadow-sm">
+                            <i class="fa-solid fa-user-tie text-xl"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-900">Staff</span>
+                    </div>
+                    <div class="glass-card interactive !mb-0 flex flex-col items-center py-6 gap-3 cursor-pointer" onclick="navigate('owner-analytics')">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-blue-600 shadow-sm">
+                            <i class="fa-solid fa-chart-pie text-xl"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-900">Analytics</span>
+                    </div>
+                    <div class="glass-card interactive !mb-0 flex flex-col items-center py-6 gap-3 cursor-pointer" onclick="navigate('owner-plans')">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center text-orange-600 shadow-sm">
+                            <i class="fa-solid fa-tag text-xl"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-900">Plans</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 animate-stagger mb-8">
+                <h3 class="font-extrabold text-xl mb-4 text-gray-900 tracking-tight">Recent Activity</h3>
+                <div class="space-y-3">
+                    <div class="glass-card interactive !mb-0 p-4 flex items-center gap-4 cursor-pointer" onclick="navigate('owner-members')">
+                        <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-user-plus text-sm"></i></div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-sm text-gray-900">New Member Signup</h4>
+                            <p class="text-textsub text-xs font-medium">Emily Brown joined Premium plan</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-textsub">2m ago</span>
+                    </div>
+                    <div class="glass-card interactive !mb-0 p-4 flex items-center gap-4 cursor-pointer" onclick="navigate('owner-analytics')">
+                        <div class="w-10 h-10 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center"><i class="fa-solid fa-credit-card text-sm"></i></div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-sm text-gray-900">Payment Received</h4>
+                            <p class="text-textsub text-xs font-medium">$149.99 from James Wilson</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-textsub">15m ago</span>
+                    </div>
+                    <div class="glass-card interactive !mb-0 p-4 flex items-center gap-4 cursor-pointer" onclick="navigate('owner-dashboard')">
+                        <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center"><i class="fa-solid fa-triangle-exclamation text-sm"></i></div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-sm text-gray-900">Equipment Alert</h4>
+                            <p class="text-textsub text-xs font-medium">Treadmill #4 needs maintenance</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-textsub">1h ago</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item active" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item" onclick="navigate('owner-members')"><i class="fa-solid fa-users tab-icon"></i><span>Members</span></div>
+            <div class="tab-item" onclick="navigate('owner-analytics')"><i class="fa-solid fa-chart-pie tab-icon"></i><span>Analytics</span></div>
+            <div class="tab-item" onclick="navigate('owner-staff')"><i class="fa-solid fa-user-tie tab-icon"></i><span>Staff</span></div>
+            <div class="tab-item" onclick="navigate('owner-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen 4: Members Management -->
+    <div id="owner-members" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Members</h1>
+            <div class="w-10 h-10 bg-violet-600 rounded-xl flex justify-center items-center cursor-pointer hover:bg-violet-700 transition shadow-sm text-white"><i class="fa-solid fa-plus"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="input-group mb-4">
+                <i class="fa-solid fa-search text-gray-400"></i>
+                <input type="text" placeholder="Search members...">
+                <i class="fa-solid fa-sliders text-gray-400 cursor-pointer hover:text-violet-600 transition"></i>
+            </div>
+
+            <div class="flex bg-gray-100 rounded-xl p-1 mb-6">
+                <div class="page-tab active text-sm">All (847)</div>
+                <div class="page-tab text-sm">Active (720)</div>
+                <div class="page-tab text-sm">Expired (127)</div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <div class="glass-card !mb-0 text-center p-3 stat-card">
+                    <p class="text-xl font-extrabold text-violet-600 animate-count-up">720</p>
+                    <p class="text-[9px] font-bold text-textsub uppercase tracking-wider mt-1">Active</p>
+                </div>
+                <div class="glass-card !mb-0 text-center p-3 stat-card">
+                    <p class="text-xl font-extrabold text-orange-500 animate-count-up">89</p>
+                    <p class="text-[9px] font-bold text-textsub uppercase tracking-wider mt-1">Expiring</p>
+                </div>
+                <div class="glass-card !mb-0 text-center p-3 stat-card">
+                    <p class="text-xl font-extrabold text-red-500 animate-count-up">38</p>
+                    <p class="text-[9px] font-bold text-textsub uppercase tracking-wider mt-1">Overdue</p>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('owner-member-detail')">
+                    <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150&h=150&fit=crop" class="w-12 h-12 rounded-full object-cover shadow-md">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">John Doe</h4>
+                        <p class="text-textsub text-xs font-medium">Premium Pro • Exp: Dec 2024</p>
+                    </div>
+                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md">ACTIVE</span>
+                </div>
+
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('owner-member-detail')">
+                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop" class="w-12 h-12 rounded-full object-cover shadow-md">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Sarah Williams</h4>
+                        <p class="text-textsub text-xs font-medium">Standard • Exp: Nov 2024</p>
+                    </div>
+                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md">ACTIVE</span>
+                </div>
+
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('owner-member-detail')">
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop" class="w-12 h-12 rounded-full object-cover shadow-md">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">David Chen</h4>
+                        <p class="text-textsub text-xs font-medium">Premium Pro • Exp: Jan 2025</p>
+                    </div>
+                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md">ACTIVE</span>
+                </div>
+
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('owner-member-detail')">
+                    <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop" class="w-12 h-12 rounded-full object-cover shadow-md">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Emma Johnson</h4>
+                        <p class="text-textsub text-xs font-medium">Basic • Exp: Oct 25, 2024</p>
+                    </div>
+                    <span class="bg-orange-50 text-orange-700 text-[10px] font-bold px-2 py-0.5 rounded-md">EXPIRING</span>
+                </div>
+
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer opacity-70" onclick="navigate('owner-member-detail')">
+                    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop" class="w-12 h-12 rounded-full object-cover shadow-md">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Alex Rivera</h4>
+                        <p class="text-textsub text-xs font-medium">Standard • Exp: Sep 2024</p>
+                    </div>
+                    <span class="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-md">EXPIRED</span>
+                </div>
+
+                <div class="glass-card interactive !mb-0 flex p-4 gap-4 items-center cursor-pointer" onclick="navigate('owner-member-detail')">
+                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop" class="w-12 h-12 rounded-full object-cover shadow-md">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Marcus Lee</h4>
+                        <p class="text-textsub text-xs font-medium">Premium Pro • Exp: Feb 2025</p>
+                    </div>
+                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md">ACTIVE</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item active" onclick="navigate('owner-members')"><i class="fa-solid fa-users tab-icon"></i><span>Members</span></div>
+            <div class="tab-item" onclick="navigate('owner-analytics')"><i class="fa-solid fa-chart-pie tab-icon"></i><span>Analytics</span></div>
+            <div class="tab-item" onclick="navigate('owner-staff')"><i class="fa-solid fa-user-tie tab-icon"></i><span>Staff</span></div>
+            <div class="tab-item" onclick="navigate('owner-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen 5: Staff Management -->
+    <div id="owner-staff" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Staff</h1>
+            <div class="w-10 h-10 bg-violet-600 rounded-xl flex justify-center items-center cursor-pointer hover:bg-violet-700 transition shadow-sm text-white"><i class="fa-solid fa-plus"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="flex bg-gray-100 rounded-xl p-1 mb-6">
+                <div class="page-tab active text-sm">Coaches (8)</div>
+                <div class="page-tab text-sm">Trainers (3)</div>
+                <div class="page-tab text-sm">Admin (1)</div>
+            </div>
+
+            <div class="space-y-3">
+                <div class="glass-card interactive !mb-0 p-4 cursor-pointer" onclick="navigate('owner-staff-detail')">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="relative">
+                            <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                            <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-base text-gray-900">Mike Tyson</h4>
+                            <p class="text-violet-600 text-xs font-bold">Head Coach</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <i class="fa-solid fa-star text-yellow-400 text-xs"></i>
+                            <span class="font-bold text-sm text-gray-900">4.9</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-lg font-extrabold text-gray-900">24</p>
+                            <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Clients</p>
+                        </div>
+                        <div class="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-lg font-extrabold text-gray-900">142</p>
+                            <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Sessions/mo</p>
+                        </div>
+                        <div class="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-lg font-extrabold text-emerald-600">$4.8K</p>
+                            <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Revenue</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card interactive !mb-0 p-4 cursor-pointer" onclick="navigate('owner-staff-detail')">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="relative">
+                            <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                            <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-base text-gray-900">Sarah Jenkins</h4>
+                            <p class="text-blue-600 text-xs font-bold">HIIT Specialist</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <i class="fa-solid fa-star text-yellow-400 text-xs"></i>
+                            <span class="font-bold text-sm text-gray-900">4.8</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-lg font-extrabold text-gray-900">18</p>
+                            <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Clients</p>
+                        </div>
+                        <div class="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-lg font-extrabold text-gray-900">98</p>
+                            <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Sessions/mo</p>
+                        </div>
+                        <div class="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-lg font-extrabold text-emerald-600">$3.6K</p>
+                            <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Revenue</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card interactive !mb-0 p-4 cursor-pointer" onclick="navigate('owner-staff-detail')">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="relative">
+                            <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop" class="w-14 h-14 rounded-full object-cover shadow-md">
+                            <div class="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-gray-400 rounded-full border-2 border-white"></div>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-base text-gray-900">Elena Rostova</h4>
+                            <p class="text-purple-600 text-xs font-bold">Yoga Instructor</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <i class="fa-solid fa-star text-yellow-400 text-xs"></i>
+                            <span class="font-bold text-sm text-gray-900">4.7</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-lg font-extrabold text-gray-900">15</p>
+                            <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Clients</p>
+                        </div>
+                        <div class="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-lg font-extrabold text-gray-900">76</p>
+                            <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Sessions/mo</p>
+                        </div>
+                        <div class="flex-1 bg-gray-50 rounded-xl p-3 text-center">
+                            <p class="text-lg font-extrabold text-emerald-600">$2.9K</p>
+                            <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Revenue</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item" onclick="navigate('owner-members')"><i class="fa-solid fa-users tab-icon"></i><span>Members</span></div>
+            <div class="tab-item" onclick="navigate('owner-analytics')"><i class="fa-solid fa-chart-pie tab-icon"></i><span>Analytics</span></div>
+            <div class="tab-item active" onclick="navigate('owner-staff')"><i class="fa-solid fa-user-tie tab-icon"></i><span>Staff</span></div>
+            <div class="tab-item" onclick="navigate('owner-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen 6: Analytics -->
+    <div id="owner-analytics" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Analytics</h1>
+            <div class="w-10 h-10 bg-white border border-gray-200 rounded-xl flex justify-center items-center cursor-pointer hover:bg-gray-50 shadow-sm"><i class="fa-solid fa-download text-gray-600 text-sm"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="flex bg-gray-100 rounded-xl p-1 mb-6">
+                <div class="page-tab active text-sm">Revenue</div>
+                <div class="page-tab text-sm">Members</div>
+                <div class="page-tab text-sm">Retention</div>
+            </div>
+
+            <div class="glass-card p-5 mb-6 relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-violet-50 rounded-full blur-2xl opacity-60"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div>
+                        <p class="text-textsub text-xs font-bold uppercase tracking-wider mb-1">Total Revenue</p>
+                        <h2 class="text-4xl font-extrabold text-gray-900 tracking-tight animate-count-up">$52.4K</h2>
+                    </div>
+                    <div class="text-right">
+                        <div class="flex items-center text-emerald-500 font-bold gap-1 justify-end text-base bg-emerald-50 px-2 py-1 rounded-lg">
+                            <i class="fa-solid fa-arrow-up text-xs"></i> 12.4%
+                        </div>
+                        <p class="text-[10px] text-textsub mt-1 font-bold uppercase tracking-wide">vs last month</p>
+                    </div>
+                </div>
+                <div class="h-48 w-full relative z-10">
+                    <canvas id="analyticsRevenueChart"></canvas>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl mb-4 text-gray-900 tracking-tight">Revenue Breakdown</h3>
+            <div class="glass-card p-5 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="relative w-28 h-28 shrink-0">
+                        <canvas id="revenuePieChart"></canvas>
+                    </div>
+                    <div class="flex-1 ml-6 space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-violet-600 shrink-0"></div>
+                            <div class="flex-1">
+                                <p class="text-xs font-bold text-gray-900">Memberships</p>
+                                <p class="text-[10px] text-textsub font-bold">$35,200 (67%)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-blue-500 shrink-0"></div>
+                            <div class="flex-1">
+                                <p class="text-xs font-bold text-gray-900">Personal Training</p>
+                                <p class="text-[10px] text-textsub font-bold">$12,400 (24%)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-orange-400 shrink-0"></div>
+                            <div class="flex-1">
+                                <p class="text-xs font-bold text-gray-900">Supplements & Retail</p>
+                                <p class="text-[10px] text-textsub font-bold">$4,800 (9%)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl mb-4 text-gray-900 tracking-tight">Key Metrics</h3>
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="glass-card !mb-0 p-5 stat-card">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                    <p class="text-2xl font-extrabold text-gray-900 animate-count-up">92%</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Retention Rate</p>
+                </div>
+                <div class="glass-card !mb-0 p-5 stat-card">
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3"><i class="fa-solid fa-clock"></i></div>
+                    <p class="text-2xl font-extrabold text-gray-900 animate-count-up">4.2h</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Avg Visit Time</p>
+                </div>
+                <div class="glass-card !mb-0 p-5 stat-card">
+                    <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center mb-3"><i class="fa-solid fa-arrow-right-arrow-left"></i></div>
+                    <p class="text-2xl font-extrabold text-gray-900 animate-count-up">$62</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Avg Revenue/Member</p>
+                </div>
+                <div class="glass-card !mb-0 p-5 stat-card">
+                    <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mb-3"><i class="fa-solid fa-fire"></i></div>
+                    <p class="text-2xl font-extrabold text-gray-900 animate-count-up">86%</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Peak Occupancy</p>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl mb-4 text-gray-900 tracking-tight">Peak Hours</h3>
+            <div class="glass-card p-5 mb-6 relative overflow-hidden">
+                <div class="h-40 w-full">
+                    <canvas id="peakHoursChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item" onclick="navigate('owner-members')"><i class="fa-solid fa-users tab-icon"></i><span>Members</span></div>
+            <div class="tab-item active" onclick="navigate('owner-analytics')"><i class="fa-solid fa-chart-pie tab-icon"></i><span>Analytics</span></div>
+            <div class="tab-item" onclick="navigate('owner-staff')"><i class="fa-solid fa-user-tie tab-icon"></i><span>Staff</span></div>
+            <div class="tab-item" onclick="navigate('owner-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen 7: Membership Plans -->
+    <div id="owner-plans" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Membership Plans</h1>
+            <div class="w-10 h-10 bg-violet-600 rounded-xl flex justify-center items-center cursor-pointer hover:bg-violet-700 transition shadow-sm text-white"><i class="fa-solid fa-plus"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <!-- Basic Plan -->
+            <div class="glass-card p-6 mb-4 relative overflow-hidden">
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-gray-100 rounded-full blur-2xl opacity-60"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div>
+                        <h3 class="font-extrabold text-xl text-gray-900">Basic</h3>
+                        <p class="text-textsub text-xs font-medium mt-1">Gym access only</p>
+                    </div>
+                    <span class="bg-gray-100 text-gray-700 text-xs font-bold px-3 py-1 rounded-lg">312 members</span>
+                </div>
+                <h2 class="text-4xl font-black text-gray-900 mb-4 relative z-10">$29.99 <span class="text-base font-bold text-textsub">/ mo</span></h2>
+                <div class="space-y-2 mb-5 relative z-10">
+                    <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-check text-emerald-500 text-xs w-4"></i> Gym floor access</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-check text-emerald-500 text-xs w-4"></i> Locker room</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-400"><i class="fa-solid fa-xmark text-red-400 text-xs w-4"></i> Group classes</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-400"><i class="fa-solid fa-xmark text-red-400 text-xs w-4"></i> Personal training</div>
+                </div>
+                <div class="flex gap-3 relative z-10">
+                    <div class="flex-1 py-3 text-center font-bold text-gray-700 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition text-sm">Edit Plan</div>
+                    <div class="flex-1 py-3 text-center font-bold text-violet-600 bg-violet-50 rounded-xl border border-violet-200 cursor-pointer hover:bg-violet-100 transition text-sm">View Members</div>
+                </div>
+            </div>
+
+            <!-- Standard Plan -->
+            <div class="glass-card p-6 mb-4 relative overflow-hidden border-violet-200">
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-violet-100 rounded-full blur-2xl opacity-60"></div>
+                <div class="absolute top-3 right-3 bg-violet-600 text-white text-[10px] font-bold px-2 py-1 rounded-md">POPULAR</div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div>
+                        <h3 class="font-extrabold text-xl text-gray-900">Standard</h3>
+                        <p class="text-textsub text-xs font-medium mt-1">Gym + Classes</p>
+                    </div>
+                    <span class="bg-violet-50 text-violet-700 text-xs font-bold px-3 py-1 rounded-lg">408 members</span>
+                </div>
+                <h2 class="text-4xl font-black text-gray-900 mb-4 relative z-10">$49.99 <span class="text-base font-bold text-textsub">/ mo</span></h2>
+                <div class="space-y-2 mb-5 relative z-10">
+                    <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-check text-emerald-500 text-xs w-4"></i> Gym floor access</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-check text-emerald-500 text-xs w-4"></i> Locker room + Sauna</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-check text-emerald-500 text-xs w-4"></i> All group classes</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-400"><i class="fa-solid fa-xmark text-red-400 text-xs w-4"></i> Personal training</div>
+                </div>
+                <div class="flex gap-3 relative z-10">
+                    <div class="flex-1 py-3 text-center font-bold text-gray-700 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition text-sm">Edit Plan</div>
+                    <div class="flex-1 py-3 text-center font-bold text-violet-600 bg-violet-50 rounded-xl border border-violet-200 cursor-pointer hover:bg-violet-100 transition text-sm">View Members</div>
+                </div>
+            </div>
+
+            <!-- Premium Plan -->
+            <div class="glass-card p-6 mb-4 relative overflow-hidden bg-gradient-to-br from-white to-yellow-50 border-yellow-200 animate-border-glow">
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-yellow-100 rounded-full blur-2xl opacity-60"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-crown text-yellow-500"></i>
+                        <div>
+                            <h3 class="font-extrabold text-xl text-gray-900">Premium Pro</h3>
+                            <p class="text-textsub text-xs font-medium mt-1">All-inclusive</p>
+                        </div>
+                    </div>
+                    <span class="bg-yellow-50 text-yellow-700 text-xs font-bold px-3 py-1 rounded-lg border border-yellow-200">127 members</span>
+                </div>
+                <h2 class="text-4xl font-black text-gray-900 mb-4 relative z-10">$99.99 <span class="text-base font-bold text-textsub">/ mo</span></h2>
+                <div class="space-y-2 mb-5 relative z-10">
+                    <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-check text-emerald-500 text-xs w-4"></i> Everything in Standard</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-check text-emerald-500 text-xs w-4"></i> 4 PT sessions / month</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-check text-emerald-500 text-xs w-4"></i> Nutrition coaching</div>
+                    <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fa-solid fa-check text-emerald-500 text-xs w-4"></i> Priority booking</div>
+                </div>
+                <div class="flex gap-3 relative z-10">
+                    <div class="flex-1 py-3 text-center font-bold text-gray-700 bg-white rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition text-sm">Edit Plan</div>
+                    <div class="flex-1 py-3 text-center font-bold text-violet-600 bg-violet-50 rounded-xl border border-violet-200 cursor-pointer hover:bg-violet-100 transition text-sm">View Members</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 8: Owner Profile -->
+    <div id="owner-profile" class="screen">
+        <div class="top-header glass">
+            <div class="back-btn" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Owner Profile</h1>
+            <div class="w-10 h-10 bg-white border border-gray-200 rounded-xl flex justify-center items-center cursor-pointer hover:bg-gray-50 shadow-sm"><i class="fa-solid fa-gear text-gray-600"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="flex flex-col items-center mb-8 pt-2">
+                <div class="relative mb-4">
+                    <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop" class="w-28 h-28 rounded-full object-cover border-4 border-white shadow-xl animate-scale-in">
+                    <div class="absolute bottom-0 right-0 w-9 h-9 bg-violet-600 rounded-full border-2 border-white flex items-center justify-center text-white cursor-pointer shadow-md hover:bg-violet-700 transition">
+                        <i class="fa-solid fa-camera text-sm"></i>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-extrabold text-gray-900 tracking-tight">Robert Martinez</h2>
+                <p class="text-violet-600 font-bold mt-1">Gym Owner</p>
+                <p class="text-textsub text-sm font-medium mt-1">FitHub Gym — Downtown</p>
+            </div>
+
+            <div class="glass-card interactive mb-6 border border-violet-200 relative overflow-hidden bg-gradient-to-br from-white to-violet-50">
+                <div class="absolute -right-16 -top-16 w-48 h-48 bg-violet-400 rounded-full opacity-10 blur-2xl"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div>
+                        <h3 class="font-extrabold text-lg text-gray-900">Business Summary</h3>
+                        <p class="text-[11px] font-bold text-violet-600 uppercase tracking-wider mt-0.5">October 2024</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 relative z-10">
+                    <div>
+                        <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Revenue</p>
+                        <p class="text-xl font-extrabold text-gray-900 mt-1">$52.4K</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Profit</p>
+                        <p class="text-xl font-extrabold text-emerald-600 mt-1">$18.2K</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Members</p>
+                        <p class="text-xl font-extrabold text-gray-900 mt-1">847</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-textsub uppercase tracking-wider">Staff</p>
+                        <p class="text-xl font-extrabold text-gray-900 mt-1">12</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl text-gray-900 mb-4 px-2 tracking-tight">Gym Settings</h3>
+            <div class="glass-card p-0 overflow-hidden divide-y divide-gray-100 mb-8 border border-gray-200 shadow-sm">
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition px-5 py-4" onclick="navigate('owner-settings')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center"><i class="fa-solid fa-building text-base"></i></div>
+                        <span class="font-bold text-base text-gray-900">Gym Information</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition px-5 py-4" onclick="navigate('owner-settings')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-clock text-base"></i></div>
+                        <span class="font-bold text-base text-gray-900">Operating Hours</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition px-5 py-4" onclick="navigate('owner-settings')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center"><i class="fa-regular fa-credit-card text-base"></i></div>
+                        <span class="font-bold text-base text-gray-900">Billing & Payments</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition px-5 py-4" onclick="navigate('owner-settings')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center"><i class="fa-solid fa-bell text-base"></i></div>
+                        <span class="font-bold text-base text-gray-900">Notifications</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+                <div class="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition px-5 py-4" onclick="navigate('owner-settings')">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fa-solid fa-chart-bar text-base"></i></div>
+                        <span class="font-bold text-base text-gray-900">Reports & Exports</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mb-6">
+                <div class="flex-1 text-center text-violet-600 font-extrabold text-base py-4 bg-violet-50 rounded-2xl cursor-pointer border border-violet-200 hover:bg-violet-100 transition">
+                    <i class="fa-solid fa-headset mr-2"></i> Support
+                </div>
+                <div class="flex-1 text-center text-red-500 font-extrabold text-base py-4 bg-white rounded-2xl cursor-pointer shadow-sm border border-red-100 hover:bg-red-50 transition ripple" onclick="navigate('splash')">
+                    <i class="fa-solid fa-arrow-right-from-bracket mr-2"></i> Log Out
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <div class="tab-item" onclick="navigate('owner-dashboard')"><i class="fa-solid fa-house tab-icon"></i><span>Home</span></div>
+            <div class="tab-item" onclick="navigate('owner-members')"><i class="fa-solid fa-users tab-icon"></i><span>Members</span></div>
+            <div class="tab-item" onclick="navigate('owner-analytics')"><i class="fa-solid fa-chart-pie tab-icon"></i><span>Analytics</span></div>
+            <div class="tab-item" onclick="navigate('owner-staff')"><i class="fa-solid fa-user-tie tab-icon"></i><span>Staff</span></div>
+            <div class="tab-item active" onclick="navigate('owner-profile')"><i class="fa-regular fa-user tab-icon"></i><span>Profile</span></div>
+        </div>
+    </div>
+
+    <!-- Screen: Member Detail -->
+    <div id="owner-member-detail" class="screen bg-white">
+        <div class="top-header glass border-b border-gray-100 shadow-sm">
+            <div class="back-btn shadow-none bg-gray-50 border-transparent" onclick="navigate('owner-members')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Member Profile</h1>
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-red-500 bg-red-50 cursor-pointer hover:bg-red-100 transition"><i class="fa-solid fa-ban text-sm"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="flex flex-col items-center mb-6">
+                <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150&h=150&fit=crop" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg mb-3">
+                <h2 class="text-2xl font-extrabold text-gray-900 tracking-tight">John Doe</h2>
+                <p class="text-textsub text-sm font-medium mt-0.5">Joined Jan 2023</p>
+                <div class="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1 rounded-md mt-2">PREMIUM PRO • ACTIVE</div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 mb-8">
+                <div class="glass-card !mb-0 p-4 text-center border border-gray-100">
+                    <p class="text-2xl font-extrabold text-violet-600 animate-count-up">142</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">Check-ins</p>
+                </div>
+                <div class="glass-card !mb-0 p-4 text-center border border-gray-100">
+                    <p class="text-2xl font-extrabold text-violet-600 animate-count-up">$950</p>
+                    <p class="text-[10px] font-bold text-textsub uppercase tracking-wider mt-1">LTV</p>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl text-gray-900 mb-4 px-2 tracking-tight">Recent Check-ins</h3>
+            <div class="space-y-3 mb-8">
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center"><i class="fa-solid fa-person-walking text-sm"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Downtown Location</h4>
+                        <p class="text-textsub text-xs font-medium">Front Desk Scanner</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-textsub">Today, 5:30 PM</span>
+                </div>
+                <div class="glass-card !mb-0 p-4 flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center"><i class="fa-solid fa-person-walking text-sm"></i></div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-sm text-gray-900">Downtown Location</h4>
+                        <p class="text-textsub text-xs font-medium">Front Desk Scanner</p>
+                    </div>
+                    <span class="text-[10px] font-bold text-textsub">Yesterday, 6:00 PM</span>
+                </div>
+            </div>
+            
+            <div class="btn-primary ripple" onclick="navigate('owner-chat')">Send Message</div>
+        </div>
+    </div>
+
+    <!-- Screen: Staff Detail -->
+    <div id="owner-staff-detail" class="screen bg-white">
+        <div class="top-header glass border-b border-gray-100 shadow-sm">
+            <div class="back-btn shadow-none bg-gray-50 border-transparent" onclick="navigate('owner-staff')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Staff Profile</h1>
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-gray-600 bg-white border border-gray-200 cursor-pointer hover:bg-gray-50 transition"><i class="fa-solid fa-pen text-sm"></i></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="flex flex-col items-center mb-6">
+                <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&h=150&fit=crop" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg mb-3">
+                <h2 class="text-2xl font-extrabold text-gray-900 tracking-tight">Mike Tyson</h2>
+                <p class="text-violet-600 text-sm font-bold mt-0.5">Head Coach</p>
+                <div class="flex items-center gap-1 mt-2 bg-yellow-50 text-yellow-700 px-3 py-1 rounded-md">
+                    <i class="fa-solid fa-star text-xs"></i><span class="font-bold text-xs">4.9 Rating</span>
+                </div>
+            </div>
+            
+            <h3 class="font-extrabold text-xl text-gray-900 mb-4 px-2 tracking-tight">Performance this month</h3>
+            <div class="grid grid-cols-3 gap-3 mb-8">
+                <div class="glass-card !mb-0 p-3 text-center border border-gray-100">
+                    <p class="text-xl font-extrabold text-gray-900">24</p>
+                    <p class="text-[9px] font-bold text-textsub uppercase tracking-wider mt-1">Clients</p>
+                </div>
+                <div class="glass-card !mb-0 p-3 text-center border border-gray-100">
+                    <p class="text-xl font-extrabold text-gray-900">142</p>
+                    <p class="text-[9px] font-bold text-textsub uppercase tracking-wider mt-1">Sessions</p>
+                </div>
+                <div class="glass-card !mb-0 p-3 text-center border border-gray-100">
+                    <p class="text-xl font-extrabold text-emerald-600">$4.8K</p>
+                    <p class="text-[9px] font-bold text-textsub uppercase tracking-wider mt-1">Revenue</p>
+                </div>
+            </div>
+
+            <h3 class="font-extrabold text-xl text-gray-900 mb-4 px-2 tracking-tight">Upcoming Schedule</h3>
+            <div class="space-y-3 mb-8">
+                <div class="glass-card !mb-0 p-4 border border-gray-100">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-bold text-gray-900">PT Session w/ John D.</span>
+                        <span class="text-violet-600 font-bold text-sm bg-violet-50 px-2 py-1 rounded-md">4:00 PM</span>
+                    </div>
+                </div>
+                <div class="glass-card !mb-0 p-4 border border-gray-100">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-bold text-gray-900">Group HIIT Class</span>
+                        <span class="text-violet-600 font-bold text-sm bg-violet-50 px-2 py-1 rounded-md">5:30 PM</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="btn-primary ripple" onclick="navigate('owner-chat')">Message Staff</div>
+        </div>
+    </div>
+
+    <!-- Screen: Gym Settings -->
+    <div id="owner-settings" class="screen bg-white">
+        <div class="top-header glass border-b border-gray-100 shadow-sm">
+            <div class="back-btn shadow-none bg-gray-50 border-transparent" onclick="navigate('owner-profile')"><i class="fa-solid fa-arrow-left"></i></div>
+            <h1>Settings</h1>
+            <div class="w-10"></div>
+        </div>
+        <div class="scroll-content p-6 animate-stagger">
+            <div class="input-group">
+                <i class="fa-solid fa-building text-gray-400"></i>
+                <div class="flex flex-col w-full">
+                    <span class="text-[11px] font-bold text-textsub uppercase tracking-wider">Gym Name</span>
+                    <input type="text" value="FitHub Gym" class="font-semibold text-gray-900 mt-0.5">
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <i class="fa-solid fa-location-dot text-gray-400"></i>
+                <div class="flex flex-col w-full">
+                    <span class="text-[11px] font-bold text-textsub uppercase tracking-wider">Location</span>
+                    <input type="text" value="Downtown Branch" class="font-semibold text-gray-900 mt-0.5">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between p-4 glass-card mt-4 mb-4">
+                <div>
+                    <h4 class="font-bold text-gray-900 text-sm">Accept New Members</h4>
+                    <p class="text-xs text-textsub mt-1">Allow signups from the app</p>
+                </div>
+                <div class="w-12 h-6 bg-violet-600 rounded-full relative cursor-pointer shadow-inner">
+                    <div class="w-5 h-5 bg-white rounded-full absolute top-0.5 right-0.5 shadow-sm"></div>
+                </div>
+            </div>
+
+            <div class="btn-primary mt-8 ripple" onclick="navigate('owner-profile')">Save Changes</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function navigate(screenId) {
+        const screens = document.querySelectorAll('.screen');
+        
+        let currentActive = null;
+        screens.forEach(s => {
+            if(s.classList.contains('active')) currentActive = s;
+        });
+
+        if(currentActive && currentActive.id !== screenId) {
+            currentActive.classList.remove('active');
+            currentActive.classList.add('fade-out');
+            setTimeout(() => {
+                currentActive.classList.remove('fade-out');
+            }, 300);
+        }
+
+        const target = document.getElementById(screenId);
+        if(target) {
+            target.classList.add('active');
+            
+            // Re-trigger animations
+            const staggers = target.querySelectorAll('.animate-stagger > *');
+            staggers.forEach(el => {
+                el.style.animation = 'none';
+                el.offsetHeight;
+                el.style.animation = null; 
+            });
+            
+            // Render charts
+            if(screenId === 'owner-dashboard' && !window.revenueChartRendered) {
+                setTimeout(() => renderRevenueChart(), 100);
+                window.revenueChartRendered = true;
+            }
+            if(screenId === 'owner-analytics' && !window.analyticsChartsRendered) {
+                setTimeout(() => renderAnalyticsCharts(), 100);
+                window.analyticsChartsRendered = true;
+            }
+        }
+    }
+    
+    function renderRevenueChart() {
+        const ctx = document.getElementById('revenueChart');
+        if (!ctx) return;
+        let gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 180);
+        gradient.addColorStop(0, 'rgba(124, 58, 237, 0.4)');
+        gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+                datasets: [{
+                    label: 'Revenue',
+                    data: [38200, 41500, 44800, 46200, 46700, 52400],
+                    borderColor: '#7C3AED',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#7C3AED',
+                    pointBorderWidth: 3,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => '$' + ctx.raw.toLocaleString() } } },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false } },
+                    y: { grid: { color: '#F3F4F6', borderDash: [5, 5] }, border: { display: false }, ticks: { callback: (val) => '$' + (val/1000) + 'K' } }
+                },
+                animation: { duration: 1500, easing: 'easeOutQuart' }
+            }
+        });
+    }
+
+    function renderAnalyticsCharts() {
+        // Revenue line chart
+        const ctx = document.getElementById('analyticsRevenueChart');
+        if (ctx) {
+            let gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 180);
+            gradient.addColorStop(0, 'rgba(124, 58, 237, 0.3)');
+            gradient.addColorStop(1, 'rgba(124, 58, 237, 0.0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: [28000, 31000, 34500, 36200, 38200, 41500, 44800, 46200, 46700, 52400],
+                        borderColor: '#7C3AED',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#FFFFFF',
+                        pointBorderColor: '#7C3AED',
+                        pointBorderWidth: 2,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => '$' + ctx.raw.toLocaleString() } } },
+                    scales: {
+                        x: { grid: { display: false }, border: { display: false } },
+                        y: { grid: { color: '#F3F4F6', borderDash: [5, 5] }, border: { display: false }, ticks: { callback: (val) => '$' + (val/1000) + 'K' } }
+                    },
+                    animation: { duration: 1500, easing: 'easeOutQuart' }
+                }
+            });
+        }
+
+        // Revenue pie chart
+        const ctx2 = document.getElementById('revenuePieChart');
+        if (ctx2) {
+            new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [67, 24, 9],
+                        backgroundColor: ['#7C3AED', '#3B82F6', '#F97316'],
+                        borderWidth: 0,
+                        borderRadius: 8,
+                        cutout: '72%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { tooltip: { enabled: false } },
+                    animation: { animateScale: true, animateRotate: true, duration: 1500, easing: 'easeOutQuart' }
+                }
+            });
+        }
+
+        // Peak hours chart
+        const ctx3 = document.getElementById('peakHoursChart');
+        if (ctx3) {
+            new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: ['6AM', '8AM', '10AM', '12PM', '2PM', '4PM', '6PM', '8PM', '10PM'],
+                    datasets: [{
+                        label: 'Visitors',
+                        data: [35, 85, 45, 55, 30, 65, 95, 75, 25],
+                        backgroundColor: [
+                            'rgba(124,58,237,0.15)', 'rgba(124,58,237,0.5)', 'rgba(124,58,237,0.2)',
+                            'rgba(124,58,237,0.25)', 'rgba(124,58,237,0.15)', 'rgba(124,58,237,0.35)',
+                            '#7C3AED', 'rgba(124,58,237,0.4)', 'rgba(124,58,237,0.1)'
+                        ],
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, border: { display: false } },
+                        y: { grid: { color: '#F3F4F6', borderDash: [5, 5] }, border: { display: false } }
+                    },
+                    animation: { duration: 1500, easing: 'easeOutQuart' }
+                }
+            });
+        }
+    }
+</script>
+
+</body>
+</html>
