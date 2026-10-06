@@ -376,9 +376,9 @@
                     <div class="w-12 h-12 rounded-full bg-white shadow-sm text-blue-600 flex items-center justify-center shrink-0">
                         <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
                     </div>
-                    <div>
+                    <div class="flex-1">
                         <h4 class="font-bold text-base mb-1.5 text-gray-900">AI Coach Insight</h4>
-                        <p class="text-gray-700 text-sm leading-relaxed font-medium">You've completed 4 workouts this week. Excellent consistency! Consider adding one active recovery session tomorrow.</p>
+                        <p class="text-gray-700 text-sm leading-relaxed font-medium" id="ai-insight-text"></p>
                     </div>
                 </div>
             </div>
@@ -1544,6 +1544,11 @@
                 renderNutritionChart();
                 window.chartsRenderedNutrition = true;
             }
+
+            // Trigger AI typing animation when opening dashboard
+            if(screenId === 'dashboard') {
+                setTimeout(typeAIInsight, 500);
+            }
         }
     }
     
@@ -1626,7 +1631,57 @@
             }
         });
     }
+
+    // AI Typing Animation
+    function typeAIInsight() {
+        const element = document.getElementById('ai-insight-text');
+        if (!element) return;
+
+        const text = "You've completed 4 workouts this week. Excellent consistency! Consider adding one active recovery session tomorrow.";
+        let index = 0;
+
+        // Clear existing content
+        element.innerHTML = '';
+
+        // Add cursor styling
+        element.style.position = 'relative';
+
+        function type() {
+            if (index < text.length) {
+                element.textContent = text.substring(0, index + 1);
+                index++;
+                // Random typing speed between 30-60ms for natural feel
+                const typingSpeed = Math.random() * 30 + 30;
+                setTimeout(type, typingSpeed);
+            } else {
+                // Add blinking cursor when done
+                element.innerHTML = text + '<span class="ai-cursor">|</span>';
+            }
+        }
+
+        // Start typing after a short delay
+        setTimeout(type, 500);
+    }
+
+    // Initialize typing animation on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(typeAIInsight, 1000);
+    });
 </script>
+
+<style>
+    /* AI Cursor Animation */
+    .ai-cursor {
+        animation: blink 1s infinite;
+        color: #3B82F6;
+        font-weight: bold;
+    }
+
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
+    }
+</style>
 
 </body>
 </html>
